@@ -119,12 +119,18 @@ public class BillingView extends VerticalLayout {
         updateRecentInvoices();
     }
 
-    private String getCurrencySymbol(String code) {
-        try {
-            return java.util.Currency.getInstance(code).getSymbol();
-        } catch (Exception e) {
-            return code + " "; // Fallback if code is invalid or "INR" text preferred by some users
-        }
+    /**
+     * Convert currency code to symbol
+     */
+    private String getCurrencySymbol(String currencyCode) {
+        return switch (currencyCode) {
+            case "INR" -> "₹";
+            case "USD" -> "$";
+            case "EUR" -> "€";
+            case "GBP" -> "£";
+            case "JPY" -> "¥";
+            default -> currencyCode + " "; // Fallback to code if unknown
+        };
     }
 
     private VerticalLayout createInvoiceForm() {
@@ -164,9 +170,6 @@ public class BillingView extends VerticalLayout {
         layout.add(new H3("New Invoice"), toolbar, itemGrid, footer);
         return layout;
     }
-
-    // ... (createInvoiceHistory, configureRecentGrid, updateRecentInvoices,
-    // configureComponents, addItem, refreshGrid methods remain similar) ...
 
     private VerticalLayout createInvoiceHistory() {
         VerticalLayout layout = new VerticalLayout();

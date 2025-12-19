@@ -16,6 +16,7 @@ body {
     font-weight: 800;
     letter-spacing: -0.5px;
     background: linear-gradient(to right, #60a5fa, #3b82f6);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     font-size: 1.5rem !important;
@@ -44,19 +45,4 @@ vaadin-app-layout::part(drawer) {
     border-right: 1px solid var(--lumo-contrast-10pct);
 }
 
-/* Dashboard Cards */
-.stats-card {
-    background: white !important;
-    border: none !important;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.stats-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-.error-card {
-    border-top: 4px solid #ef4444 !important;
-}
+/* Dashboard Cards - Styles are set via inline styles in DashboardView.java */

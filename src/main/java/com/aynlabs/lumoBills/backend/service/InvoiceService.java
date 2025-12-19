@@ -46,6 +46,17 @@ public class InvoiceService {
         return invoiceRepository.save(invoice);
     }
 
+    public java.math.BigDecimal getTotalSalesAmount() {
+        return invoiceRepository.findAll().stream()
+                .filter(i -> i.getStatus() == Invoice.InvoiceStatus.PAID)
+                .map(Invoice::getTotalAmount)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+    }
+
+    public long count() {
+        return invoiceRepository.count();
+    }
+
     public java.util.List<Invoice> findAll() {
         return invoiceRepository.findAll();
     }

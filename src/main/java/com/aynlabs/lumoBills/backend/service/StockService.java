@@ -37,7 +37,14 @@ public class StockService {
 
         stockHistoryRepository.save(history);
     }
-    
+
+    public List<StockHistory> findRecentActivity(int limit) {
+        return stockHistoryRepository.findAll(org.springframework.data.domain.PageRequest.of(0, limit,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
+                        "timestamp")))
+                .getContent();
+    }
+
     public List<StockHistory> findAll() {
         return stockHistoryRepository.findAll();
     }
