@@ -47,7 +47,11 @@ public class InvoiceService {
     }
 
     public java.math.BigDecimal getTotalSalesAmount() {
-        return invoiceRepository.findAll().stream()
+        return getTotalSalesAmountBetween(java.time.LocalDateTime.MIN, java.time.LocalDateTime.MAX);
+    }
+
+    public java.math.BigDecimal getTotalSalesAmountBetween(java.time.LocalDateTime start, java.time.LocalDateTime end) {
+        return invoiceRepository.findByDateBetween(start, end).stream()
                 .filter(i -> i.getStatus() == Invoice.InvoiceStatus.PAID)
                 .map(Invoice::getTotalAmount)
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);

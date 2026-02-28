@@ -4,7 +4,9 @@ import com.aynlabs.lumoBills.backend.entity.Role;
 import com.aynlabs.lumoBills.backend.entity.User;
 import com.aynlabs.lumoBills.backend.security.SecurityService;
 import com.aynlabs.lumoBills.ui.views.billing.BillingView;
+import com.aynlabs.lumoBills.ui.views.customer.CustomerView;
 import com.aynlabs.lumoBills.ui.views.dashboard.DashboardView;
+import com.aynlabs.lumoBills.ui.views.purchase.PurchaseView;
 import com.aynlabs.lumoBills.ui.views.stock.StockView;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
@@ -137,6 +139,12 @@ public class MainLayout extends AppLayout {
             }
             if (isAdmin || accessibleViews.contains("Billing")) {
                 nav.addItem(new SideNavItem("Billing", BillingView.class, VaadinIcon.INVOICE.create()));
+            }
+            if (isAdmin || accessibleViews.contains("Purchase")) {
+                nav.addItem(new SideNavItem("Purchase", PurchaseView.class, VaadinIcon.CART.create()));
+            }
+            if (isAdmin || accessibleViews.contains("Customers")) {
+                nav.addItem(new SideNavItem("Customers", CustomerView.class, VaadinIcon.USERS.create()));
             }
             if (isAdmin || accessibleViews.contains("Invoices")) {
                 nav.addItem(new SideNavItem("Invoices", com.aynlabs.lumoBills.ui.views.billing.InvoiceListView.class,

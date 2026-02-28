@@ -3,3 +3,6 @@ node_modules
 .idea/
 frontend/generated
 /target
+.DS_Store
+.agent
+package-lock.json

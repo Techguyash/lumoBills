@@ -21,15 +21,33 @@ public class StockService {
 
     @Transactional
     public void adjustStock(Product product, int amount, TransactionType type, User user, String notes) {
+        adjustStock(product, amount, null, type, user, notes);
+    }
+
+    @Transactional
+    public void adjustStock(Product product, int amount, java.math.BigDecimal purchasePrice, TransactionType type,
+            User user, String notes) {
         // Update product stock
         int currentStock = product.getQuantityInStock() != null ? product.getQuantityInStock() : 0;
         product.setQuantityInStock(currentStock + amount);
+
+        // Update product's last buying price if it's a purchase
+        if (type == TransactionType.PURCHASE && purchasePrice != null) {
+            product.setBuyingPrice(purchasePrice);
+        }
+
         productRepository.save(product);
 
         // Record history
         StockHistory history = new StockHistory();
         history.setProduct(product);
         history.setChangeAmount(amount);
+        history.setPurchasePrice(purchasePrice);
+
+        if (purchasePrice != null) {
+            history.setTotalAmount(purchasePrice.multiply(java.math.BigDecimal.valueOf(Math.abs(amount))));
+        }
+
         history.setType(type);
         history.setTimestamp(LocalDateTime.now());
         history.setConductedBy(user);
@@ -45,7 +63,13 @@ public class StockService {
                 .getContent();
     }
 
-    public List<StockHistory> findAll() {
+    public java.math.BigDecimal getTotalPurchaseAmount() {
+        return stockHistoryRepository.findByType(TransactionType.PURCHASE).stream()
+                .map(sh -> sh.getTotalAmount() != null ? sh.getTotalAmount() : java.math.BigDecimal.ZERO)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+    }
+
+    public java.util.List<StockHistory> findAll() {
         return stockHistoryRepository.findAll();
     }
 }

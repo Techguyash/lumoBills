@@ -18,6 +18,10 @@ public class StockHistory extends AbstractEntity {
 
     private Integer changeAmount; // Positive for add, negative for remove
 
+    private java.math.BigDecimal purchasePrice;
+
+    private java.math.BigDecimal totalAmount;
+
     @Enumerated(EnumType.STRING)
     private TransactionType type;
 
@@ -25,7 +29,7 @@ public class StockHistory extends AbstractEntity {
 
     @ManyToOne
     private User conductedBy;
-    
+
     private String notes;
 
     public enum TransactionType {

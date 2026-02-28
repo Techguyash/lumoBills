@@ -15,6 +15,8 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
+import com.aynlabs.lumoBills.backend.dto.ProductProfitDTO;
+import java.math.BigDecimal;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,6 +34,7 @@ public class ReportService {
     private final SystemSettingService settingService;
     private final InvoiceRepository invoiceRepository;
     private final StockHistoryRepository stockHistoryRepository;
+    private final com.aynlabs.lumoBills.backend.repository.ProductRepository productRepository;
 
     public List<SalesReportDTO> getSalesData(LocalDateTime start, LocalDateTime end) {
         return invoiceRepository.findByDateBetween(start, end).stream()
@@ -44,6 +47,23 @@ public class ReportService {
                         .discountAmount(i.getDiscountAmount())
                         .totalAmount(i.getTotalAmount())
                         .build())
+                .collect(Collectors.toList());
+    }
+
+    public List<ProductProfitDTO> getProductProfitData() {
+        return productRepository.findAll().stream()
+                .map(p -> {
+                    BigDecimal buying = p.getBuyingPrice() != null ? p.getBuyingPrice() : BigDecimal.ZERO;
+                    BigDecimal selling = p.getUnitPrice() != null ? p.getUnitPrice() : BigDecimal.ZERO;
+                    BigDecimal profit = selling.subtract(buying);
+                    return ProductProfitDTO.builder()
+                            .productName(p.getName())
+                            .buyingPrice(buying)
+                            .sellingPrice(selling)
+                            .profitPerUnit(profit)
+                            .status(profit.compareTo(BigDecimal.ZERO) >= 0 ? "Profit" : "Loss")
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 
@@ -60,6 +80,8 @@ public class ReportService {
                         .productName(s.getProduct() != null ? s.getProduct().getName() : "Unknown")
                         .type(s.getType())
                         .changeAmount(s.getChangeAmount())
+                        .purchasePrice(s.getPurchasePrice())
+                        .totalAmount(s.getTotalAmount())
                         .conductedBy(s.getConductedBy() != null ? s.getConductedBy().getName() : "System")
                         .notes(s.getNotes())
                         .build())

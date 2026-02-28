@@ -91,6 +91,8 @@ public class StockView extends VerticalLayout {
         grid.setSizeFull();
         grid.setColumns("name", "category", "unitPrice", "quantityInStock", "description");
 
+        grid.getColumnByKey("unitPrice").setHeader("Selling Price");
+
         com.aynlabs.lumoBills.ui.util.GridHelper.setBasicProperties(grid);
 
         grid.asSingleSelect().addValueChangeListener(event -> editProduct(event.getValue()));

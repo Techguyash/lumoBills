@@ -25,7 +25,8 @@ public class ProductForm extends FormLayout {
 
     TextField name = new TextField("Product Name");
     ComboBox<Category> category = new ComboBox<>("Category");
-    BigDecimalField unitPrice = new BigDecimalField("Unit Price");
+    BigDecimalField buyingPrice = new BigDecimalField("Buying Price");
+    BigDecimalField unitPrice = new BigDecimalField("Selling Price");
     IntegerField quantityInStock = new IntegerField("Initial Qty (Adjust in audit)");
     IntegerField reorderLevel = new IntegerField("Reorder Level");
     TextField description = new TextField("Description");
@@ -47,6 +48,7 @@ public class ProductForm extends FormLayout {
 
         add(name,
                 category,
+                buyingPrice,
                 unitPrice,
                 quantityInStock,
                 reorderLevel,

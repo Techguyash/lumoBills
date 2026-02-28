@@ -10,4 +10,6 @@ public interface StockHistoryRepository extends JpaRepository<StockHistory, Long
     List<StockHistory> findByTimestampBetween(LocalDateTime start, LocalDateTime end);
 
     List<StockHistory> findByTimestampBetweenAndType(LocalDateTime start, LocalDateTime end, TransactionType type);
+
+    List<StockHistory> findByType(TransactionType type);
 }

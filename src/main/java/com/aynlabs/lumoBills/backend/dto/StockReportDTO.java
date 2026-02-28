@@ -12,6 +12,8 @@ public class StockReportDTO {
     private String productName;
     private TransactionType type;
     private Integer changeAmount;
+    private java.math.BigDecimal purchasePrice;
+    private java.math.BigDecimal totalAmount;
     private String conductedBy;
     private String notes;
 }

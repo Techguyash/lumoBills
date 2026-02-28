@@ -20,11 +20,15 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
 import jakarta.annotation.security.PermitAll;
+import com.aynlabs.lumoBills.backend.dto.ProductProfitDTO;
+import com.vaadin.flow.component.html.Span;
 import java.io.ByteArrayInputStream;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import com.aynlabs.lumoBills.backend.entity.Purchase;
 
 @PermitAll
 @Route(value = "reports", layout = MainLayout.class)
@@ -32,6 +36,7 @@ import java.util.List;
 public class ReportsView extends VerticalLayout {
 
     private final ReportService reportService;
+    private final com.aynlabs.lumoBills.backend.service.PurchaseService purchaseService;
 
     private DatePicker startDate = new DatePicker("Start Date");
     private DatePicker endDate = new DatePicker("End Date");
@@ -41,8 +46,10 @@ public class ReportsView extends VerticalLayout {
     private Grid<?> currentGrid;
     private List<?> currentData;
 
-    public ReportsView(ReportService reportService) {
+    public ReportsView(ReportService reportService,
+            com.aynlabs.lumoBills.backend.service.PurchaseService purchaseService) {
         this.reportService = reportService;
+        this.purchaseService = purchaseService;
         setSizeFull();
 
         add(new H2("Business Reports"), createToolbar(), gridContainer);
@@ -51,7 +58,8 @@ public class ReportsView extends VerticalLayout {
         startDate.setValue(LocalDate.now().minusMonths(1));
         endDate.setValue(LocalDate.now());
 
-        reportType.setItems("Sales Report", "Stock History", "Stock Refill (Purchases)");
+        reportType.setItems("Sales Report", "Stock History", "Stock Refill (Purchases)", "Product Profitability",
+                "Raw Material Purchases");
         reportType.setValue("Sales Report");
     }
 
@@ -88,6 +96,10 @@ public class ReportsView extends VerticalLayout {
             Grid<StockReportDTO> grid = new Grid<>(StockReportDTO.class);
             List<StockReportDTO> data = reportService.getStockHistoryData(start, end, null);
             grid.setItems(data);
+            grid.setColumns("date", "productName", "type", "changeAmount", "purchasePrice", "totalAmount",
+                    "conductedBy", "notes");
+            grid.getColumnByKey("purchasePrice").setHeader("Price Rate");
+            grid.getColumnByKey("totalAmount").setHeader("Total Financial");
             GridHelper.setBasicProperties(grid);
             gridContainer.add(grid);
             currentGrid = grid;
@@ -96,6 +108,48 @@ public class ReportsView extends VerticalLayout {
             Grid<StockReportDTO> grid = new Grid<>(StockReportDTO.class);
             List<StockReportDTO> data = reportService.getStockHistoryData(start, end, TransactionType.PURCHASE);
             grid.setItems(data);
+            grid.setColumns("date", "productName", "changeAmount", "purchasePrice", "totalAmount", "conductedBy",
+                    "notes");
+            grid.getColumnByKey("purchasePrice").setHeader("Buying Price");
+            grid.getColumnByKey("totalAmount").setHeader("Total Cost");
+            GridHelper.setBasicProperties(grid);
+            gridContainer.add(grid);
+            currentGrid = grid;
+            currentData = data;
+        } else if ("Product Profitability".equals(type)) {
+            Grid<ProductProfitDTO> grid = new Grid<>(ProductProfitDTO.class);
+            List<ProductProfitDTO> data = reportService.getProductProfitData();
+            grid.setItems(data);
+
+            grid.removeAllColumns();
+            grid.addColumn(ProductProfitDTO::getProductName).setHeader("Product Name").setKey("productName");
+            grid.addColumn(ProductProfitDTO::getBuyingPrice).setHeader("Buying Price").setKey("buyingPrice");
+            grid.addColumn(ProductProfitDTO::getSellingPrice).setHeader("Selling Price").setKey("sellingPrice");
+
+            grid.addComponentColumn(p -> {
+                BigDecimal profit = p.getProfitPerUnit();
+                Span span = new Span();
+                if (profit.compareTo(BigDecimal.ZERO) >= 0) {
+                    span.setText("↑ " + profit + " (Profit)");
+                    span.getStyle().set("color", "green");
+                    span.getStyle().set("font-weight", "bold");
+                } else {
+                    span.setText("↓ " + profit.abs() + " (Loss)");
+                    span.getStyle().set("color", "red");
+                    span.getStyle().set("font-weight", "bold");
+                }
+                return span;
+            }).setHeader("Profit/Loss").setSortable(true).setKey("profitHistory");
+
+            GridHelper.setBasicProperties(grid);
+            gridContainer.add(grid);
+            currentGrid = grid;
+            currentData = data;
+        } else if ("Raw Material Purchases".equals(type)) {
+            Grid<Purchase> grid = new Grid<>(Purchase.class);
+            List<Purchase> data = purchaseService.findByDateBetween(start, end);
+            grid.setItems(data);
+            grid.setColumns("purchaseDate", "productName", "sellerName", "quantity", "price", "total");
             GridHelper.setBasicProperties(grid);
             gridContainer.add(grid);
             currentGrid = grid;
@@ -115,9 +169,22 @@ public class ReportsView extends VerticalLayout {
             headers = new String[] { "Invoice ID", "Date", "Customer", "Subtotal", "Tax", "Discount", "Total" };
             fields = new String[] { "invoiceId", "date", "customerName", "subTotal", "taxAmount", "discountAmount",
                     "totalAmount" };
+        } else if ("Raw Material Purchases".equals(type)) {
+            headers = new String[] { "Date", "Item Name", "Seller", "Qty", "Rate", "Total" };
+            fields = new String[] { "purchaseDate", "productName", "sellerName", "quantity", "price", "total" };
+        } else if ("Product Profitability".equals(type)) {
+            headers = new String[] { "Product", "Buying Price", "Selling Price", "Profit/Loss Status" };
+            fields = new String[] { "productName", "buyingPrice", "sellingPrice", "status" };
+        } else if ("Stock Refill (Purchases)".equals(type)) {
+            headers = new String[] { "Date", "Product", "Quantity", "Buying Price", "Total Cost", "Conducted By",
+                    "Notes" };
+            fields = new String[] { "date", "productName", "changeAmount", "purchasePrice", "totalAmount",
+                    "conductedBy", "notes" };
         } else {
-            headers = new String[] { "Date", "Product", "Type", "Change", "Conducted By", "Notes" };
-            fields = new String[] { "date", "productName", "type", "changeAmount", "conductedBy", "notes" };
+            headers = new String[] { "Date", "Product", "Type", "Change", "Rate", "Total Financial", "Conducted By",
+                    "Notes" };
+            fields = new String[] { "date", "productName", "type", "changeAmount", "purchasePrice", "totalAmount",
+                    "conductedBy", "notes" };
         }
 
         StreamResource resource = new StreamResource("report.xlsx", () -> {

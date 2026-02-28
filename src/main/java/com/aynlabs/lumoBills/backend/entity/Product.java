@@ -23,7 +23,10 @@ public class Product extends AbstractEntity {
     private Category category;
 
     @NotNull
-    private BigDecimal unitPrice; // Cost price (optional) or Selling price
+    private BigDecimal buyingPrice;
+
+    @NotNull
+    private BigDecimal unitPrice; // Selling price
 
     @NotNull
     private Integer quantityInStock = 0;

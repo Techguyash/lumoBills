@@ -17,7 +17,17 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
 import jakarta.annotation.security.PermitAll;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 
 @PermitAll
 @Route(value = "dashboard", layout = MainLayout.class)
@@ -29,15 +39,24 @@ public class DashboardView extends VerticalLayout {
         private final InvoiceService invoiceService;
         private final StockService stockService;
         private final SystemSettingService settingService;
+        private final com.aynlabs.lumoBills.backend.service.PurchaseService purchaseService;
+
+        private DatePicker startDate = new DatePicker("From Date");
+        private DatePicker endDate = new DatePicker("To Date");
+        private FlexLayout statsLayout = new FlexLayout();
+        private String currencySymbol = "$";
+        private com.vaadin.flow.component.html.Div chartContainer = new com.vaadin.flow.component.html.Div();
 
         public DashboardView(ProductService productService,
                         InvoiceService invoiceService,
                         StockService stockService,
-                        SystemSettingService settingService) {
+                        SystemSettingService settingService,
+                        com.aynlabs.lumoBills.backend.service.PurchaseService purchaseService) {
                 this.productService = productService;
                 this.invoiceService = invoiceService;
                 this.stockService = stockService;
                 this.settingService = settingService;
+                this.purchaseService = purchaseService;
 
                 addClassName("dashboard-view");
                 setSizeFull();
@@ -46,30 +65,25 @@ public class DashboardView extends VerticalLayout {
                 add(new H2("Dashboard Summary"));
 
                 String currencyCode = settingService.getValue("CURRENCY", "INR");
-                String currencySymbol = getCurrencySymbol(currencyCode);
+                this.currencySymbol = getCurrencySymbol(currencyCode);
 
-                // Stats Cards with distinct colors
-                FlexLayout statsLayout = new FlexLayout();
+                // Date Filters
+                startDate.setValue(LocalDate.now().minusMonths(1));
+                endDate.setValue(LocalDate.now());
+
+                Button refreshBtn = new Button("Apply Filters", e -> refreshDashboard());
+                refreshBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+                HorizontalLayout filterLayout = new HorizontalLayout(startDate, endDate, refreshBtn);
+                filterLayout.setAlignItems(Alignment.BASELINE);
+                add(filterLayout);
+
+                // Stats Cards Container
                 statsLayout.setFlexWrap(FlexLayout.FlexWrap.WRAP);
                 statsLayout.getStyle().set("gap", "20px");
                 statsLayout.setWidthFull();
 
-                // Blue gradient for Total Products
-                statsLayout.add(createCard("Total Products", String.valueOf(productService.count()),
-                                "stats-card", "#4F46E5", "#818CF8"));
-
-                // Green gradient for Total Invoices
-                statsLayout.add(createCard("Total Invoices", String.valueOf(invoiceService.count()),
-                                "stats-card", "#059669", "#34D399"));
-
-                // Purple gradient for Total Sales
-                statsLayout.add(createCard("Total Sales",
-                                currencySymbol + " " + invoiceService.getTotalSalesAmount().toPlainString(),
-                                "stats-card", "#7C3AED", "#A78BFA"));
-
-                long lowStockCount = productService.findAll().stream().filter(Product::isLowStock).count();
-                // Red gradient for Low Stock Alerts (error card)
-                statsLayout.add(createCard("Low Stock Alerts", String.valueOf(lowStockCount), "error-card"));
+                add(statsLayout);
 
                 // Main Content Area (Charts and Activity)
                 com.vaadin.flow.component.orderedlayout.HorizontalLayout mainContent = new com.vaadin.flow.component.orderedlayout.HorizontalLayout();
@@ -82,14 +96,15 @@ public class DashboardView extends VerticalLayout {
                 chartSection.setSpacing(true);
                 chartSection.setWidth("65%");
 
-                H4 chartTitle = new H4("Sales Overview");
-                com.vaadin.flow.component.html.Div chartContainer = new com.vaadin.flow.component.html.Div();
+                H4 chartTitle = new H4("Sales vs Purchases Performance");
                 chartContainer.setId("sales-chart-container");
                 chartContainer.getStyle().set("width", "100%");
                 chartContainer.getStyle().set("height", "400px");
                 chartContainer.add(new Html("<canvas id='salesChart'></canvas>"));
 
                 chartSection.add(chartTitle, chartContainer);
+
+                refreshDashboard();
 
                 // Activity Feed (Notification Column)
                 VerticalLayout activityFeed = new VerticalLayout();
@@ -170,28 +185,94 @@ public class DashboardView extends VerticalLayout {
                 initChart();
         }
 
-        private void initChart() {
-                // Simple Chart.js integration via executeJs
+        private void refreshDashboard() {
+                statsLayout.removeAll();
+                LocalDateTime start = startDate.getValue().atStartOfDay();
+                LocalDateTime end = endDate.getValue().atTime(java.time.LocalTime.MAX);
+
+                BigDecimal income = invoiceService.getTotalSalesAmountBetween(start, end);
+                BigDecimal expense = purchaseService.getTotalAmountBetween(start, end);
+                BigDecimal profit = income.subtract(expense);
+
+                statsLayout.add(createCard("Total Income", currencySymbol + " " + income, "stats-card", "#059669",
+                                "#34D399"));
+                statsLayout.add(createCard("Total Expense", currencySymbol + " " + expense, "stats-card", "#EA580C",
+                                "#FB923C"));
+
+                String profitColor = profit.compareTo(BigDecimal.ZERO) >= 0 ? "#4F46E5" : "#DC2626";
+                String profitEnd = profit.compareTo(BigDecimal.ZERO) >= 0 ? "#818CF8" : "#F87171";
+                statsLayout.add(createCard("Net Profit/Loss", currencySymbol + " " + profit, "stats-card", profitColor,
+                                profitEnd));
+
+                long lowStockCount = productService.findAll().stream().filter(Product::isLowStock).count();
+                statsLayout.add(createCard("Low Stock Alerts", String.valueOf(lowStockCount), "error-card"));
+
+                updateChartData(start, end);
+        }
+
+        private void updateChartData(LocalDateTime start, LocalDateTime end) {
+                // Fetch and aggregate data
+                Map<LocalDate, BigDecimal> salesByDay = invoiceService.findAll().stream()
+                                .filter(i -> i.getStatus() == com.aynlabs.lumoBills.backend.entity.Invoice.InvoiceStatus.PAID)
+                                .filter(i -> i.getDate().isAfter(start) && i.getDate().isBefore(end))
+                                .collect(Collectors.groupingBy(i -> i.getDate().toLocalDate(),
+                                                Collectors.reducing(BigDecimal.ZERO,
+                                                                com.aynlabs.lumoBills.backend.entity.Invoice::getTotalAmount,
+                                                                BigDecimal::add)));
+
+                Map<LocalDate, BigDecimal> purchaseByDay = purchaseService.findByDateBetween(start, end).stream()
+                                .collect(Collectors.groupingBy(p -> p.getPurchaseDate().toLocalDate(),
+                                                Collectors.reducing(BigDecimal.ZERO,
+                                                                com.aynlabs.lumoBills.backend.entity.Purchase::getTotal,
+                                                                BigDecimal::add)));
+
+                // Get combined sorted dates
+                List<LocalDate> allDates = new ArrayList<>();
+                allDates.addAll(salesByDay.keySet());
+                allDates.addAll(purchaseByDay.keySet());
+                List<LocalDate> sortedDates = allDates.stream().distinct().sorted().collect(Collectors.toList());
+
+                if (sortedDates.isEmpty()) {
+                        sortedDates.add(LocalDate.now());
+                }
+
+                List<String> labels = sortedDates.stream().map(LocalDate::toString).collect(Collectors.toList());
+                List<BigDecimal> salesData = sortedDates.stream().map(d -> salesByDay.getOrDefault(d, BigDecimal.ZERO))
+                                .collect(Collectors.toList());
+                List<BigDecimal> purchaseData = sortedDates.stream()
+                                .map(d -> purchaseByDay.getOrDefault(d, BigDecimal.ZERO)).collect(Collectors.toList());
+
+                String labelsJson = "['" + String.join("','", labels) + "']";
+                String salesJson = salesData.toString();
+                String purchaseJson = purchaseData.toString();
+
                 getElement().executeJs(
-                                "const script = document.createElement('script');" +
-                                                "script.src = 'https://cdn.jsdelivr.net/npm/chart.js';" +
-                                                "script.onload = () => {" +
-                                                "  const ctx = document.getElementById('salesChart').getContext('2d');"
-                                                +
-                                                "  new Chart(ctx, {" +
-                                                "    type: 'line'," +
-                                                "    data: {" +
-                                                "      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']," +
-                                                "      datasets: [{" +
-                                                "        label: 'Daily Revenue'," +
-                                                "        data: [12, 19, 3, 5, 2, 3, 7]," +
-                                                "        borderColor: 'rgb(75, 192, 192)'," +
-                                                "        tension: 0.1" +
-                                                "      }]" +
-                                                "    }" +
-                                                "  });" +
-                                                "};" +
-                                                "document.head.appendChild(script);");
+                                "if (window.myDashboardChart) { window.myDashboardChart.destroy(); }" +
+                                                "const ctx = document.getElementById('salesChart').getContext('2d');" +
+                                                "window.myDashboardChart = new Chart(ctx, {" +
+                                                "  type: 'line'," +
+                                                "  data: {" +
+                                                "    labels: " + labelsJson + "," +
+                                                "    datasets: [" +
+                                                "      { label: 'Sales Income', data: " + salesJson
+                                                + ", borderColor: '#059669', tension: 0.3, fill: false }," +
+                                                "      { label: 'Purchase Expense', data: " + purchaseJson
+                                                + ", borderColor: '#EA580C', tension: 0.3, fill: false }" +
+                                                "    ]" +
+                                                "  }," +
+                                                "  options: { responsive: true, maintainAspectRatio: false }" +
+                                                "});");
+        }
+
+        private void initChart() {
+                // Ensure Chart.js is loaded
+                getElement().executeJs(
+                                "if (!window.Chart) {" +
+                                                "  const script = document.createElement('script');" +
+                                                "  script.src = 'https://cdn.jsdelivr.net/npm/chart.js';" +
+                                                "  script.onload = () => { console.log('Chart.js loaded'); };" +
+                                                "  document.head.appendChild(script);" +
+                                                "}");
         }
 
         private Component createCard(String title, String value) {
