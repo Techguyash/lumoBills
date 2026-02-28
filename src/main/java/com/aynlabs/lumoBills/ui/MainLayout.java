@@ -52,11 +52,10 @@ public class MainLayout extends AppLayout {
     private void addHeaderContent() {
         DrawerToggle toggle = new DrawerToggle();
         toggle.getElement().setAttribute("aria-label", "Menu toggle");
-        toggle.addClassName("text-white");
 
         // Logo / App Name in Header
         H1 logo = new H1("LumoBills");
-        logo.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE, "text-white", "header-logo");
+        logo.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE, "header-logo");
 
         HorizontalLayout leftSide = new HorizontalLayout(toggle, logo);
         leftSide.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
@@ -95,7 +94,6 @@ public class MainLayout extends AppLayout {
                                 "}");
             });
             themeToggle.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-            themeToggle.addClassName("text-white");
 
             HorizontalLayout rightSide = new HorizontalLayout(themeToggle, userMenu);
             rightSide.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
@@ -107,13 +105,9 @@ public class MainLayout extends AppLayout {
     }
 
     private void addDrawerContent() {
-        H1 appName = new H1("LumoBills");
-        appName.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
-        Header header = new Header(appName);
-
         Scroller scroller = new Scroller(createNavigation());
 
-        addToDrawer(header, scroller, createFooter());
+        addToDrawer(scroller, createFooter());
     }
 
     private SideNav createNavigation() {

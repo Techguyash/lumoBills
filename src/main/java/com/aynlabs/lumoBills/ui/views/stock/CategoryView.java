@@ -8,6 +8,8 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
@@ -96,10 +98,26 @@ public class CategoryView extends VerticalLayout {
 
         Button delete = new Button("Delete", e -> {
             if (category.getId() != null) {
-                categoryService.delete(category);
-                updateList();
+                try {
+                    categoryService.delete(category);
+                    updateList();
+                    dialog.close();
+                } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+                    Notification.show(
+                            "Cannot delete category as products are tagged to it.",
+                            5000,
+                            Notification.Position.MIDDLE)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                } catch (Exception ex) {
+                    Notification.show(
+                            "Error deleting category: " + ex.getMessage(),
+                            5000,
+                            Notification.Position.MIDDLE)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
+            } else {
+                dialog.close();
             }
-            dialog.close();
         });
         delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
 

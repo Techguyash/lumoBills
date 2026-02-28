@@ -136,8 +136,10 @@ public class DataGenerator {
         Invoice invoice = new Invoice();
         invoice.setCustomer(customer);
         invoice.setDate(date.atStartOfDay());
+        invoice.setStatus(Invoice.InvoiceStatus.PAID);
 
         java.util.List<InvoiceItem> invoiceItems = new java.util.ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
 
         for (java.util.Map.Entry<Product, Integer> entry : items.entrySet()) {
             Product p = entry.getKey();
@@ -149,10 +151,16 @@ public class DataGenerator {
             item.setUnitPrice(p.getUnitPrice());
             item.setInvoice(invoice);
 
+            total = total.add(p.getUnitPrice().multiply(BigDecimal.valueOf(qty)));
+
             invoiceItems.add(item);
         }
 
         invoice.setItems(invoiceItems);
+        invoice.setSubTotal(total);
+        invoice.setDiscountAmount(BigDecimal.ZERO);
+        invoice.setTaxAmount(BigDecimal.ZERO);
+        invoice.setTotalAmount(total);
         service.saveInvoice(invoice);
     }
 }

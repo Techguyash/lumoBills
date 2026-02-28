@@ -34,6 +34,15 @@ public class Invoice extends AbstractEntity {
     private BigDecimal discountAmount;
     // totalAmount is already there, acts as grandTotal
 
+    @jakarta.persistence.Column(unique = true)
+    private String invoiceNumber;
+
+    @jakarta.persistence.Column(length = 2000)
+    private String notes;
+
+    @Enumerated(EnumType.STRING)
+    private PaymentMode paymentMode;
+
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     private List<InvoiceItem> items = new ArrayList<>();
 
@@ -42,5 +51,9 @@ public class Invoice extends AbstractEntity {
 
     public enum InvoiceStatus {
         PENDING, PAID, CANCELLED
+    }
+
+    public enum PaymentMode {
+        CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, OTHER
     }
 }

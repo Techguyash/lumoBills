@@ -35,6 +35,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import com.vaadin.flow.component.textfield.TextArea;
 
 @PermitAll
 @Route(value = "billing", layout = MainLayout.class)
@@ -64,6 +65,10 @@ public class BillingView extends VerticalLayout {
     private Span totalAmount = new Span("Total: $0.00");
 
     private Button saveInvoiceButton = new Button("Save Invoice");
+    private Button saveDraftButton = new Button("Save as Draft");
+    private Button clearButton = new Button("Clear Form");
+    private ComboBox<Invoice.PaymentMode> paymentModeSelect = new ComboBox<>("Payment Mode");
+    private TextArea notesField = new TextArea("Notes");
     private Anchor downloadLink = new Anchor();
 
     // State
@@ -77,7 +82,6 @@ public class BillingView extends VerticalLayout {
     // Recent Invoices
     private Grid<Invoice> recentGrid = new Grid<>(Invoice.class);
 
-    private final com.aynlabs.lumoBills.backend.service.SystemSettingService settingService;
     private String currencySymbol = "$";
 
     public BillingView(ProductService productService, CustomerService customerService,
@@ -91,7 +95,6 @@ public class BillingView extends VerticalLayout {
         this.reportService = reportService;
         this.taxService = taxService;
         this.discountService = discountService;
-        this.settingService = settingService;
 
         // Load currency symbol
         String currencyCode = settingService.getValue("CURRENCY", "INR");
@@ -137,15 +140,35 @@ public class BillingView extends VerticalLayout {
         VerticalLayout layout = new VerticalLayout();
         layout.setPadding(true);
 
-        HorizontalLayout toolbar = new HorizontalLayout(customerSelect, productSelect, quantity, addButton);
+        Button addCustomerBtn = new Button(
+                new com.vaadin.flow.component.icon.Icon(com.vaadin.flow.component.icon.VaadinIcon.PLUS));
+        addCustomerBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        addCustomerBtn.addClickListener(e -> openCustomerDialog());
+
+        HorizontalLayout customerLayout = new HorizontalLayout(customerSelect, addCustomerBtn);
+        customerLayout.setAlignItems(Alignment.BASELINE);
+
+        HorizontalLayout toolbar = new HorizontalLayout(customerLayout, productSelect, quantity, addButton);
         toolbar.setAlignItems(Alignment.BASELINE);
 
         addButton.addClickListener(e -> addItem());
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         saveInvoiceButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
-        saveInvoiceButton.addClickListener(e -> saveInvoice());
+        saveInvoiceButton.addClickListener(e -> saveInvoice(Invoice.InvoiceStatus.PAID));
         saveInvoiceButton.setEnabled(false);
+
+        saveDraftButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveDraftButton.addClickListener(e -> saveInvoice(Invoice.InvoiceStatus.PENDING));
+        saveDraftButton.setEnabled(false);
+
+        clearButton.addClickListener(e -> resetInvoice());
+
+        paymentModeSelect.setItems(Invoice.PaymentMode.values());
+        paymentModeSelect.setValue(Invoice.PaymentMode.CASH);
+
+        HorizontalLayout extraOptions = new HorizontalLayout(paymentModeSelect, notesField);
+        extraOptions.setWidthFull();
 
         downloadLink.getElement().setAttribute("download", true);
         downloadLink.setVisible(false);
@@ -162,13 +185,50 @@ public class BillingView extends VerticalLayout {
         summaryLayout.setPadding(false);
         summaryLayout.setAlignItems(Alignment.END);
 
-        HorizontalLayout footer = new HorizontalLayout(summaryLayout, saveInvoiceButton);
+        HorizontalLayout actionButtons = new HorizontalLayout(clearButton, saveDraftButton, saveInvoiceButton);
+
+        HorizontalLayout footer = new HorizontalLayout(summaryLayout, actionButtons);
         footer.setDefaultVerticalComponentAlignment(Alignment.CENTER);
         footer.setWidthFull();
         footer.setJustifyContentMode(JustifyContentMode.BETWEEN);
 
-        layout.add(new H3("New Invoice"), toolbar, itemGrid, footer);
+        layout.add(new H3("New Invoice"), toolbar, itemGrid, extraOptions, footer);
         return layout;
+    }
+
+    private void openCustomerDialog() {
+        com.vaadin.flow.component.dialog.Dialog addDialog = new com.vaadin.flow.component.dialog.Dialog();
+        addDialog.setHeaderTitle("New Customer");
+
+        com.vaadin.flow.component.textfield.TextField first = new com.vaadin.flow.component.textfield.TextField(
+                "First Name");
+        com.vaadin.flow.component.textfield.TextField last = new com.vaadin.flow.component.textfield.TextField(
+                "Last Name");
+        com.vaadin.flow.component.textfield.EmailField email = new com.vaadin.flow.component.textfield.EmailField(
+                "Email");
+        com.vaadin.flow.component.textfield.TextField phone = new com.vaadin.flow.component.textfield.TextField(
+                "Phone");
+
+        Button save = new Button("Save", e -> {
+            if (first.getValue() != null && !first.getValue().isEmpty()) {
+                Customer c = new Customer();
+                c.setFirstName(first.getValue());
+                c.setLastName(last.getValue());
+                c.setEmail(email.getValue());
+                c.setPhone(phone.getValue());
+                customerService.save(c);
+                customerSelect.setItems(customerService.findAll());
+                customerSelect.setValue(c);
+                addDialog.close();
+                Notification.show("Customer created");
+            }
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        Button cancel = new Button("Cancel", e -> addDialog.close());
+
+        addDialog.add(new HorizontalLayout(first, last), new HorizontalLayout(email, phone));
+        addDialog.getFooter().add(cancel, save);
+        addDialog.open();
     }
 
     private VerticalLayout createInvoiceHistory() {
@@ -180,11 +240,16 @@ public class BillingView extends VerticalLayout {
 
     private void configureRecentGrid() {
         recentGrid.setSizeFull();
-        recentGrid.setColumns("id", "date", "totalAmount");
+        recentGrid.setColumns("date");
+        recentGrid
+                .addColumn(invoice -> invoice.getInvoiceNumber() != null ? invoice.getInvoiceNumber() : invoice.getId())
+                .setHeader("Invoice #").setSortable(true);
         recentGrid.addColumn(invoice -> invoice.getCustomer() != null ? invoice.getCustomer().getFullName() : "-")
                 .setHeader("Customer");
-        recentGrid.addColumn(invoice -> invoice.getCustomer() != null ? invoice.getCustomer().getFullName() : "-")
-                .setHeader("Customer");
+        recentGrid.addColumn(invoice -> invoice.getStatus() != null ? invoice.getStatus().name() : "-")
+                .setHeader("Status");
+        recentGrid.addColumn(invoice -> this.currencySymbol + invoice.getTotalAmount())
+                .setHeader("Total Amount");
         // recentGrid.getColumns().forEach(col -> col.setAutoWidth(true));
         com.aynlabs.lumoBills.ui.util.GridHelper.setBasicProperties(recentGrid);
     }
@@ -206,14 +271,35 @@ public class BillingView extends VerticalLayout {
         });
 
         productSelect.setItems(productService.findAll());
-        productSelect.setItemLabelGenerator(Product::getName);
+        productSelect.setItemLabelGenerator(
+                p -> p.getName() + " (Stock: " + (p.getQuantityInStock() != null ? p.getQuantityInStock() : 0) + ")");
 
         quantity.setValue(1);
         quantity.setMin(1);
 
         itemGrid.removeAllColumns();
         itemGrid.addColumn(item -> item.getProduct().getName()).setHeader("Product");
-        itemGrid.addColumn(InvoiceItem::getQuantity).setHeader("Quantity");
+
+        itemGrid.addComponentColumn(item -> {
+            IntegerField qtyField = new IntegerField();
+            qtyField.setValue(item.getQuantity());
+            qtyField.setMin(1);
+            qtyField.setStepButtonsVisible(true);
+            qtyField.addValueChangeListener(e -> {
+                if (e.getValue() != null && e.getValue() > 0) {
+                    if (e.getValue() > item.getProduct().getQuantityInStock()) {
+                        Notification.show("Insufficient stock!", 2000, Notification.Position.MIDDLE)
+                                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        qtyField.setValue(e.getOldValue());
+                    } else {
+                        item.setQuantity(e.getValue());
+                        refreshGrid();
+                    }
+                }
+            });
+            return qtyField;
+        }).setHeader("Quantity");
+
         itemGrid.addColumn(InvoiceItem::getUnitPrice).setHeader("Unit Price");
         itemGrid.addColumn(InvoiceItem::getSubTotal).setHeader("Subtotal");
 
@@ -323,10 +409,12 @@ public class BillingView extends VerticalLayout {
     }
 
     private void updateSaveButtonState() {
-        saveInvoiceButton.setEnabled(selectedCustomer != null && !currentItems.isEmpty());
+        boolean valid = selectedCustomer != null && !currentItems.isEmpty();
+        saveInvoiceButton.setEnabled(valid);
+        saveDraftButton.setEnabled(valid);
     }
 
-    private void saveInvoice() {
+    private void saveInvoice(Invoice.InvoiceStatus targetStatus) {
         try {
             User currentUser = securityService.getAuthenticatedUser();
 
@@ -334,6 +422,8 @@ public class BillingView extends VerticalLayout {
             invoice.setCustomer(selectedCustomer);
             invoice.setDate(LocalDateTime.now());
             invoice.setItems(new ArrayList<>(currentItems)); // Copy list
+            invoice.setNotes(notesField.getValue());
+            invoice.setPaymentMode(paymentModeSelect.getValue());
 
             // Set calculated values
             invoice.setSubTotal(currentSubTotal);
@@ -341,7 +431,7 @@ public class BillingView extends VerticalLayout {
             invoice.setTaxAmount(currentTax);
             invoice.setTotalAmount(currentTotal);
 
-            invoice.setStatus(Invoice.InvoiceStatus.PAID);
+            invoice.setStatus(targetStatus);
 
             invoiceService.createInvoice(invoice, currentUser);
 
@@ -396,6 +486,8 @@ public class BillingView extends VerticalLayout {
         refreshGrid();
         customerSelect.clear();
         productSelect.clear();
+        notesField.clear();
+        paymentModeSelect.setValue(Invoice.PaymentMode.CASH);
         selectedCustomer = null;
     }
 }
