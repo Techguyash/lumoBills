@@ -13,7 +13,7 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.splitlayout.SplitLayout;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
@@ -34,7 +34,6 @@ public class InvoiceListView extends VerticalLayout {
     private final com.aynlabs.lumoBills.backend.service.SystemSettingService settingService;
     private final com.aynlabs.lumoBills.backend.service.EmailService emailService;
     private Grid<Invoice> grid = new Grid<>(Invoice.class);
-    private Grid<InvoiceItem> detailsGrid = new Grid<>(InvoiceItem.class);
     private TextField filterText = new TextField();
     private com.vaadin.flow.component.datepicker.DatePicker startDate = new com.vaadin.flow.component.datepicker.DatePicker(
             "From Date");
@@ -42,7 +41,6 @@ public class InvoiceListView extends VerticalLayout {
             "To Date");
     private com.vaadin.flow.component.combobox.ComboBox<Invoice.InvoiceStatus> statusFilter = new com.vaadin.flow.component.combobox.ComboBox<>(
             "Status");
-    private SplitLayout splitLayout;
     private String currencySymbol = "$";
 
     public InvoiceListView(InvoiceService invoiceService, ReportService reportService,
@@ -63,36 +61,9 @@ public class InvoiceListView extends VerticalLayout {
         setSizeFull();
 
         configureGrid();
-        configureDetailsGrid();
 
-        splitLayout = new SplitLayout();
-        splitLayout.setSizeFull();
-
-        VerticalLayout listLayout = new VerticalLayout(getToolbar(), grid);
-        listLayout.setSizeFull();
-        splitLayout.addToPrimary(listLayout);
-
-        VerticalLayout detailsLayout = new VerticalLayout();
-        detailsLayout.add(new com.vaadin.flow.component.html.H3("Invoice Items"), detailsGrid);
-        detailsLayout.setSizeFull();
-        detailsLayout.setVisible(false); // Hidden by default
-        splitLayout.addToSecondary(detailsLayout);
-
-        add(splitLayout);
+        add(getToolbar(), grid);
         updateList();
-    }
-
-    private void configureDetailsGrid() {
-        detailsGrid.setSizeFull();
-        detailsGrid.setColumns(); // Clear default
-        detailsGrid.addColumn(item -> item.getProduct() != null ? item.getProduct().getName() : "Unknown")
-                .setHeader("Product");
-        detailsGrid.addColumn(InvoiceItem::getQuantity).setHeader("Qty");
-        detailsGrid.addColumn(InvoiceItem::getUnitPrice).setHeader("Price");
-        detailsGrid.addColumn(item -> item.getUnitPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())))
-                .setHeader("Subtotal");
-
-        com.aynlabs.lumoBills.ui.util.GridHelper.setBasicProperties(detailsGrid);
     }
 
     private void configureGrid() {
@@ -128,205 +99,146 @@ public class InvoiceListView extends VerticalLayout {
                 + (invoice.getAmountPending() != null ? invoice.getAmountPending() : java.math.BigDecimal.ZERO))
                 .setHeader("Pending");
 
-        grid.addComponentColumn(invoice -> {
-            HorizontalLayout actions = new HorizontalLayout();
-
-            Button printBtn = new Button(new Icon(VaadinIcon.PRINT));
-            printBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-
-            // Create a StreamResource for the PDF
-            StreamResource resource = new StreamResource("invoice_" + invoice.getId() + ".pdf", () -> {
-                try {
-                    byte[] pdfBytes = reportService.generateInvoicePdf(invoice);
-                    if (pdfBytes == null) {
-                        throw new RuntimeException("PDF generation returned null bytes");
-                    }
-                    return new ByteArrayInputStream(pdfBytes);
-                } catch (Exception e) {
-                    e.printStackTrace(); // Log error to console
-                    Notification.show("Error generating PDF: " + e.getMessage());
-                    // Return empty stream to avoid confusing the response handler
-                    return new ByteArrayInputStream(new byte[0]);
-                }
-            });
-
-            Anchor link = new Anchor(resource, "");
-            link.getElement().setAttribute("download", true);
-            link.add(printBtn);
-            actions.add(link);
-
-            // Email button
-            if (invoice.getCustomer() != null && invoice.getCustomer().getEmail() != null
-                    && !invoice.getCustomer().getEmail().isEmpty()) {
-                Button emailBtn = new Button(new Icon(VaadinIcon.ENVELOPE));
-                emailBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-                emailBtn.addClickListener(e -> {
-                    try {
-                        String subject = "Invoice #" + invoice.getInvoiceNumber() + " from "
-                                + settingService.getValue("COMPANY_NAME", "LumoBills");
-                        String body = "Dear " + invoice.getCustomer().getFirstName()
-                                + ",\n\nPlease find the details of your invoice attached.\nTotal Amount: "
-                                + currencySymbol + invoice.getTotalAmount() + "\n\nThank you for your business!";
-                        emailService.sendEmail(invoice.getCustomer().getEmail(), subject, body);
-                        Notification.show("Email sent to " + invoice.getCustomer().getEmail());
-                    } catch (Exception ex) {
-                        Notification.show("Failed to send email");
-                    }
-                });
-                actions.add(emailBtn);
-            }
-
-            if (invoice.getStatus() == Invoice.InvoiceStatus.PENDING
-                    || invoice.getStatus() == Invoice.InvoiceStatus.PARTIAL) {
-                Button payBtn = new Button(new Icon(VaadinIcon.DOLLAR));
-                payBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SUCCESS);
-                payBtn.setTooltipText("Add Payment");
-                payBtn.addClickListener(e -> {
-                    com.vaadin.flow.component.dialog.Dialog payDialog = new com.vaadin.flow.component.dialog.Dialog();
-                    payDialog.setHeaderTitle("Add Payment");
-
-                    com.vaadin.flow.component.textfield.BigDecimalField amountField = new com.vaadin.flow.component.textfield.BigDecimalField(
-                            "Amount");
-                    amountField.setValue(invoice.getAmountPending());
-                    amountField.setWidthFull();
-
-                    com.vaadin.flow.component.combobox.ComboBox<Invoice.PaymentMode> modeField = new com.vaadin.flow.component.combobox.ComboBox<>(
-                            "Mode");
-                    modeField.setItems(Invoice.PaymentMode.values());
-                    modeField.setValue(Invoice.PaymentMode.CASH);
-                    modeField.setWidthFull();
-
-                    TextField refField = new TextField("Reference Number");
-                    refField.setWidthFull();
-
-                    Button saveBtn = new Button("Record Payment", ev -> {
-                        if (amountField.getValue() != null
-                                && amountField.getValue().compareTo(java.math.BigDecimal.ZERO) > 0) {
-                            try {
-                                invoiceService.addPayment(invoice, amountField.getValue(), modeField.getValue(),
-                                        refField.getValue());
-                                updateList();
-                                payDialog.close();
-                                Notification.show("Payment added successfully");
-                            } catch (Exception ex) {
-                                Notification.show("Error: " + ex.getMessage(), 4000, Notification.Position.MIDDLE);
-                            }
-                        }
-                    });
-                    saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
-                    Button cancelBtn2 = new Button("Cancel", ev -> payDialog.close());
-
-                    VerticalLayout vl = new VerticalLayout(amountField, modeField, refField);
-                    payDialog.add(vl);
-                    payDialog.getFooter().add(cancelBtn2, saveBtn);
-                    payDialog.open();
-                });
-                actions.add(payBtn);
-
-                Button finalizeBtn = new Button(new Icon(VaadinIcon.CHECK));
-                finalizeBtn.setTooltipText("Finalize Draft (Mark Fully Paid)");
-                finalizeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SUCCESS);
-                finalizeBtn.addClickListener(e -> {
-                    com.vaadin.flow.component.dialog.Dialog confirmDialog = new com.vaadin.flow.component.dialog.Dialog();
-                    confirmDialog.setHeaderTitle("Finalize Invoice?");
-                    confirmDialog.add("Marking invoice as PAID will deduct stock. Proceed?");
-                    Button confirm = new Button("Mark as Paid", ev -> {
-                        com.aynlabs.lumoBills.backend.entity.User user = securityService.getAuthenticatedUser();
-                        invoiceService.finalizeDraft(invoice, user);
-                        updateList();
-                        confirmDialog.close();
-                        Notification.show("Invoice Finalized & Paid");
-                    });
-                    confirm.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
-                    Button cancel = new Button("Cancel", ev -> confirmDialog.close());
-                    confirmDialog.getFooter().add(cancel, confirm);
-                    confirmDialog.open();
-                });
-                actions.add(finalizeBtn);
-            }
-
-            if (invoice.getStatus() != Invoice.InvoiceStatus.CANCELLED) {
-                Button cancelBtn = new Button(new Icon(VaadinIcon.BAN));
-                cancelBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR);
-                cancelBtn.addClickListener(e -> {
-                    com.vaadin.flow.component.dialog.Dialog confirmDialog = new com.vaadin.flow.component.dialog.Dialog();
-                    confirmDialog.setHeaderTitle("Cancel Invoice?");
-                    confirmDialog.add("Are you sure you want to cancel Invoice #"
-                            + (invoice.getInvoiceNumber() != null ? invoice.getInvoiceNumber() : invoice.getId())
-                            + "?");
-
-                    Button confirm = new Button("Yes, Cancel", ev -> {
-                        com.aynlabs.lumoBills.backend.entity.User user = securityService.getAuthenticatedUser();
-                        invoiceService.cancelInvoice(invoice, user);
-                        updateList();
-                        confirmDialog.close();
-                        Notification.show("Invoice Cancelled");
-                    });
-                    confirm.addThemeVariants(ButtonVariant.LUMO_ERROR);
-
-                    Button cancel = new Button("Nevermind", ev -> confirmDialog.close());
-
-                    confirmDialog.getFooter().add(cancel, confirm);
-                    confirmDialog.open();
-                });
-                actions.add(cancelBtn);
-            }
-
-            return actions;
-        }).setHeader("Actions");
-
-        // grid.getColumns().forEach(col -> col.setAutoWidth(true)); // Handled by
-        // GridHelper now
-        com.aynlabs.lumoBills.ui.util.GridHelper.setBasicProperties(grid);
-
-        // Add row click listener to show details
-        grid.asSingleSelect().addValueChangeListener(event ->
-
-        {
-            if (event.getValue() != null) {
-                showDetails(event.getValue());
-            } else {
-                splitLayout.getSecondaryComponent().setVisible(false);
+        grid.setSelectionMode(Grid.SelectionMode.NONE);
+        grid.addItemClickListener(e -> {
+            if (e.getItem() != null) {
+                openInvoiceDialog(e.getItem());
             }
         });
+
+        com.aynlabs.lumoBills.ui.util.GridHelper.setBasicProperties(grid);
     }
 
-    private void showDetails(Invoice invoice) {
-        detailsGrid.setItems(invoice.getItems());
+    private void openInvoiceDialog(Invoice invoice) {
+        com.vaadin.flow.component.dialog.Dialog detailsDialog = new com.vaadin.flow.component.dialog.Dialog();
+        detailsDialog.setHeaderTitle("Invoice Details - #"
+                + (invoice.getInvoiceNumber() != null ? invoice.getInvoiceNumber() : invoice.getId()));
+        detailsDialog.setWidth("500px");
 
-        // Remove previous summary if exists
-        splitLayout.getSecondaryComponent().getChildren()
-                .filter(c -> c instanceof VerticalLayout && ((VerticalLayout) c).getId().orElse("").equals("summary"))
-                .findFirst().ifPresent(c -> ((VerticalLayout) splitLayout.getSecondaryComponent()).remove(c));
+        VerticalLayout layout = new VerticalLayout();
+        layout.setPadding(true);
+        layout.setSpacing(true);
 
-        VerticalLayout detailsLayout = (VerticalLayout) splitLayout.getSecondaryComponent();
+        layout.add(new com.vaadin.flow.component.html.Span(
+                "Customer: " + (invoice.getCustomer() != null ? invoice.getCustomer().getFullName() : "N/A")));
+        layout.add(new com.vaadin.flow.component.html.Span("Date: " + invoice.getDate().toString()));
+        layout.add(
+                new com.vaadin.flow.component.html.Span("Total Amount: " + currencySymbol + invoice.getTotalAmount()));
+        layout.add(new com.vaadin.flow.component.html.Span("Amount Paid: " + currencySymbol + invoice.getAmountPaid()));
+        layout.add(new com.vaadin.flow.component.html.Span(
+                "Amount Pending: " + currencySymbol + invoice.getAmountPending()));
 
-        // Check if we already added a summary block to the layout (fragile check,
-        // better to rebuild or struct)
-        // Simplest: clear detailsLayout and rebuild
-        detailsLayout.removeAll();
-        detailsLayout.add(new com.vaadin.flow.component.html.H3("Invoice Items"), detailsGrid);
+        // Add Items Grid to Dialog
+        Grid<InvoiceItem> itemGrid = new Grid<>(InvoiceItem.class);
+        itemGrid.setItems(invoice.getItems());
+        itemGrid.setColumns();
+        itemGrid.addColumn(item -> item.getProduct() != null ? item.getProduct().getName() : "Unknown")
+                .setHeader("Product");
+        itemGrid.addColumn(InvoiceItem::getQuantity).setHeader("Qty");
+        itemGrid.addColumn(InvoiceItem::getUnitPrice).setHeader("Price");
+        itemGrid.addColumn(item -> item.getUnitPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())))
+                .setHeader("Subtotal");
+        itemGrid.setAllRowsVisible(true);
+        com.aynlabs.lumoBills.ui.util.GridHelper.setBasicProperties(itemGrid);
 
-        VerticalLayout summary = new VerticalLayout();
-        summary.setPadding(false);
-        summary.setSpacing(false);
-        summary.add(new com.vaadin.flow.component.html.Span(
-                "Subtotal: " + this.currencySymbol + (invoice.getSubTotal() != null ? invoice.getSubTotal() : "-")));
-        summary.add(new com.vaadin.flow.component.html.Span(
-                "Discount: -" + this.currencySymbol
-                        + (invoice.getDiscountAmount() != null ? invoice.getDiscountAmount() : "-")));
-        summary.add(new com.vaadin.flow.component.html.Span(
-                "Tax: +" + this.currencySymbol + (invoice.getTaxAmount() != null ? invoice.getTaxAmount() : "-")));
-        com.vaadin.flow.component.html.Span total = new com.vaadin.flow.component.html.Span(
-                "Total: " + this.currencySymbol + invoice.getTotalAmount());
-        total.getStyle().set("font-weight", "bold");
-        summary.add(total);
+        layout.add(new com.vaadin.flow.component.html.H4("Items"), itemGrid);
 
-        detailsLayout.add(summary);
+        HorizontalLayout footerActions = new HorizontalLayout();
+        footerActions.setWidthFull();
+        footerActions.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
 
-        splitLayout.getSecondaryComponent().setVisible(true);
-        splitLayout.setSplitterPosition(60);
+        // Print Button
+        Button printBtn = new Button("Print Invoice", new Icon(VaadinIcon.PRINT));
+        printBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        StreamResource resource = new StreamResource("invoice_" + invoice.getId() + ".pdf", () -> {
+            try {
+                return new ByteArrayInputStream(reportService.generateInvoicePdf(invoice));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                return new ByteArrayInputStream(new byte[0]);
+            }
+        });
+        Anchor printLink = new Anchor(resource, "");
+        printLink.getElement().setAttribute("download", true);
+        printLink.add(printBtn);
+
+        // Cancel Button
+        Button cancelInvoiceBtn = new Button("Cancel Invoice", new Icon(VaadinIcon.BAN));
+        cancelInvoiceBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        cancelInvoiceBtn.setEnabled(invoice.getStatus() != Invoice.InvoiceStatus.CANCELLED);
+        cancelInvoiceBtn.addClickListener(e -> {
+            com.vaadin.flow.component.dialog.Dialog confirmCancel = new com.vaadin.flow.component.dialog.Dialog();
+            confirmCancel.setHeaderTitle("Cancel Invoice?");
+            confirmCancel.add("Are you sure you want to cancel this invoice?");
+            Button yesBtn = new Button("Yes, Cancel", ev -> {
+                invoiceService.cancelInvoice(invoice, securityService.getAuthenticatedUser());
+                updateList();
+                confirmCancel.close();
+                detailsDialog.close();
+                Notification.show("Invoice Cancelled");
+            });
+            yesBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+            confirmCancel.getFooter().add(new Button("No", ev -> confirmCancel.close()), yesBtn);
+            confirmCancel.open();
+        });
+
+        layout.add(new com.vaadin.flow.component.html.Hr());
+
+        // Update Payment Section
+        if (invoice.getStatus() == Invoice.InvoiceStatus.PENDING
+                || invoice.getStatus() == Invoice.InvoiceStatus.PARTIAL) {
+            com.vaadin.flow.component.html.H4 payTitle = new com.vaadin.flow.component.html.H4("Add Payment");
+            com.vaadin.flow.component.textfield.BigDecimalField amountField = new com.vaadin.flow.component.textfield.BigDecimalField(
+                    "Amount");
+            amountField.setValue(invoice.getAmountPending());
+            amountField.setWidthFull();
+
+            com.vaadin.flow.component.combobox.ComboBox<Invoice.PaymentMode> modeField = new com.vaadin.flow.component.combobox.ComboBox<>(
+                    "Mode");
+            modeField.setItems(Invoice.PaymentMode.values());
+            modeField.setValue(Invoice.PaymentMode.CASH);
+            modeField.setWidthFull();
+
+            Button recordPayBtn = new Button("Record Payment", ev -> {
+                if (amountField.getValue() != null && amountField.getValue().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                    try {
+                        invoiceService.addPayment(invoice, amountField.getValue(), modeField.getValue(), "");
+                        updateList();
+                        detailsDialog.close();
+                        Notification.show("Payment added successfully");
+                    } catch (Exception ex) {
+                        Notification.show("Error: " + ex.getMessage());
+                    }
+                }
+            });
+            recordPayBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_PRIMARY);
+            recordPayBtn.setWidthFull();
+
+            layout.add(payTitle, amountField, modeField, recordPayBtn);
+        }
+
+        detailsDialog.add(layout);
+
+        // Email button in footer if email exists
+        if (invoice.getCustomer() != null && invoice.getCustomer().getEmail() != null
+                && !invoice.getCustomer().getEmail().isEmpty()) {
+            Button emailBtn = new Button("Email", new Icon(VaadinIcon.ENVELOPE), e -> {
+                try {
+                    String companyName = settingService.getValue("COMPANY_NAME", "LumoBills");
+                    String subject = "Invoice #" + invoice.getInvoiceNumber() + " from " + companyName;
+                    String body = "Dear " + invoice.getCustomer().getFirstName()
+                            + ",\n\nPlease find your invoice details attached.";
+                    emailService.sendEmail(invoice.getCustomer().getEmail(), subject, body);
+                    Notification.show("Email sent successfully");
+                } catch (Exception ex) {
+                    Notification.show("Failed to send email");
+                }
+            });
+            detailsDialog.getFooter().add(emailBtn);
+        }
+
+        detailsDialog.getFooter().add(new Button("Close", e -> detailsDialog.close()), cancelInvoiceBtn, printLink);
+        detailsDialog.open();
     }
 
     private HorizontalLayout getToolbar() {
@@ -344,7 +256,7 @@ public class InvoiceListView extends VerticalLayout {
         searchBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         HorizontalLayout toolbar = new HorizontalLayout(filterText, startDate, endDate, statusFilter, searchBtn);
-        toolbar.setDefaultVerticalComponentAlignment(Alignment.BASELINE);
+        toolbar.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.BASELINE);
         toolbar.addClassName("toolbar");
         return toolbar;
     }
