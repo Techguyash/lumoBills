@@ -46,11 +46,17 @@ public class Invoice extends AbstractEntity {
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     private List<InvoiceItem> items = new ArrayList<>();
 
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Payment> payments = new ArrayList<>();
+
+    private BigDecimal amountPaid = BigDecimal.ZERO;
+    private BigDecimal amountPending = BigDecimal.ZERO;
+
     @ManyToOne
     private User createdBy;
 
     public enum InvoiceStatus {
-        PENDING, PAID, CANCELLED
+        PENDING, PARTIAL, PAID, CANCELLED
     }
 
     public enum PaymentMode {

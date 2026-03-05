@@ -13,8 +13,10 @@ import lombok.Setter;
 @Setter
 public class Purchase extends AbstractEntity {
 
-    @NotEmpty
-    private String productName;
+    @jakarta.persistence.ManyToOne
+    @jakarta.persistence.JoinColumn(name = "product_id")
+    @NotNull
+    private Product product;
 
     private String sellerName;
 

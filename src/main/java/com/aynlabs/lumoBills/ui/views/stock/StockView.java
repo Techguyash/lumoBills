@@ -21,6 +21,7 @@ public class StockView extends VerticalLayout {
 
     Grid<Product> grid = new Grid<>(Product.class);
     TextField filterText = new TextField();
+    com.vaadin.flow.component.combobox.ComboBox<com.aynlabs.lumoBills.backend.entity.Category> categoryFilter = new com.vaadin.flow.component.combobox.ComboBox<>();
 
     private final ProductService productService;
     private final com.aynlabs.lumoBills.backend.service.CategoryService categoryService;
@@ -89,9 +90,21 @@ public class StockView extends VerticalLayout {
     private void configureGrid() {
         grid.addClassNames("contact-grid");
         grid.setSizeFull();
-        grid.setColumns("name", "category", "unitPrice", "quantityInStock", "description");
+        grid.setColumns("name", "category", "unitPrice", "description");
 
         grid.getColumnByKey("unitPrice").setHeader("Selling Price");
+
+        grid.addComponentColumn(product -> {
+            com.vaadin.flow.component.html.Span badge = new com.vaadin.flow.component.html.Span(
+                    String.valueOf(product.getQuantityInStock()));
+            badge.getElement().getThemeList().add("badge");
+            if (product.isLowStock()) {
+                badge.getElement().getThemeList().add("error");
+            } else {
+                badge.getElement().getThemeList().add("success");
+            }
+            return badge;
+        }).setHeader("Stock").setSortable(true).setComparator(Product::getQuantityInStock);
 
         com.aynlabs.lumoBills.ui.util.GridHelper.setBasicProperties(grid);
 
@@ -104,10 +117,16 @@ public class StockView extends VerticalLayout {
         filterText.setValueChangeMode(ValueChangeMode.LAZY);
         filterText.addValueChangeListener(e -> updateList());
 
+        categoryFilter.setPlaceholder("Filter by category...");
+        categoryFilter.setItems(categoryService.findAll());
+        categoryFilter.setItemLabelGenerator(com.aynlabs.lumoBills.backend.entity.Category::getName);
+        categoryFilter.setClearButtonVisible(true);
+        categoryFilter.addValueChangeListener(e -> updateList());
+
         Button addProductButton = new Button("Add Product");
         addProductButton.addClickListener(click -> addProduct());
 
-        HorizontalLayout toolbar = new HorizontalLayout(filterText, addProductButton);
+        HorizontalLayout toolbar = new HorizontalLayout(filterText, categoryFilter, addProductButton);
         toolbar.addClassName("toolbar");
         return toolbar;
     }
@@ -118,6 +137,12 @@ public class StockView extends VerticalLayout {
     }
 
     private void updateList() {
-        grid.setItems(productService.findAll(filterText.getValue()));
+        java.util.List<Product> products = productService.findAll(filterText.getValue());
+        if (categoryFilter.getValue() != null) {
+            products = products.stream().filter(
+                    p -> p.getCategory() != null && p.getCategory().getId().equals(categoryFilter.getValue().getId()))
+                    .toList();
+        }
+        grid.setItems(products);
     }
 }

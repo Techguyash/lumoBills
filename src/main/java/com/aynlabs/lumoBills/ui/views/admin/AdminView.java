@@ -354,7 +354,8 @@ public class AdminView extends VerticalLayout {
         roles.setItems(Role.values());
 
         CheckboxGroup<String> accessiblePages = new CheckboxGroup<>("Allowed Pages");
-        accessiblePages.setItems("Dashboard", "Stock", "Categories", "Billing", "Invoices");
+        accessiblePages.setItems("Dashboard", "Stock", "Categories", "Billing", "Invoices", "Purchase", "Customers",
+                "Reports", "Ledger");
 
         Binder<User> binder = new BeanValidationBinder<>(User.class);
         binder.bind(username, "username");

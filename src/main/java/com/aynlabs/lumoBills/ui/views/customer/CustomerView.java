@@ -25,11 +25,20 @@ import jakarta.annotation.security.PermitAll;
 public class CustomerView extends VerticalLayout {
 
     private final CustomerService customerService;
+    private final com.aynlabs.lumoBills.backend.service.SystemSettingService settingService;
     private Grid<Customer> grid = new Grid<>(Customer.class);
     private CustomerForm form;
+    private TextField filterText = new TextField();
+    private String currencySymbol = "$";
 
-    public CustomerView(CustomerService customerService) {
+    public CustomerView(CustomerService customerService,
+            com.aynlabs.lumoBills.backend.service.SystemSettingService settingService) {
         this.customerService = customerService;
+        this.settingService = settingService;
+
+        String currencyCode = settingService.getValue("CURRENCY", "INR");
+        this.currencySymbol = com.aynlabs.lumoBills.ui.util.CurrencyUtility.getCurrencySymbol(currencyCode);
+
         addClassName("customer-view");
         setSizeFull();
 
@@ -44,7 +53,19 @@ public class CustomerView extends VerticalLayout {
     private void configureGrid() {
         grid.addClassNames("customer-grid");
         grid.setSizeFull();
-        grid.setColumns("firstName", "lastName", "email", "phone", "address");
+        grid.setColumns("firstName", "lastName", "email", "phone");
+        grid.addComponentColumn(customer -> {
+            java.math.BigDecimal balance = customer.getOutstandingBalance() != null ? customer.getOutstandingBalance()
+                    : java.math.BigDecimal.ZERO;
+            com.vaadin.flow.component.html.Span badge = new com.vaadin.flow.component.html.Span(
+                    this.currencySymbol + balance.toString());
+            if (balance.compareTo(java.math.BigDecimal.ZERO) > 0) {
+                badge.getElement().getThemeList().add("badge error");
+            } else {
+                badge.getElement().getThemeList().add("badge success");
+            }
+            return badge;
+        }).setHeader("Outstanding Balance").setSortable(true);
         grid.getColumns().forEach(col -> col.setAutoWidth(true));
 
         grid.asSingleSelect().addValueChangeListener(event -> editCustomer(event.getValue()));
@@ -59,10 +80,15 @@ public class CustomerView extends VerticalLayout {
     }
 
     private HorizontalLayout getToolbar() {
+        filterText.setPlaceholder("Filter by name...");
+        filterText.setClearButtonVisible(true);
+        filterText.setValueChangeMode(com.vaadin.flow.data.value.ValueChangeMode.LAZY);
+        filterText.addValueChangeListener(e -> updateList());
+
         Button addCustomerButton = new Button("Add Customer");
         addCustomerButton.addClickListener(click -> addCustomer());
 
-        HorizontalLayout toolbar = new HorizontalLayout(addCustomerButton);
+        HorizontalLayout toolbar = new HorizontalLayout(filterText, addCustomerButton);
         toolbar.addClassName("toolbar");
         return toolbar;
     }
@@ -112,7 +138,17 @@ public class CustomerView extends VerticalLayout {
     }
 
     private void updateList() {
-        grid.setItems(customerService.findAll());
+        java.util.List<Customer> allCustomers = customerService.findAll();
+        if (filterText.getValue() != null && !filterText.getValue().isEmpty()) {
+            String term = filterText.getValue().toLowerCase();
+            allCustomers = allCustomers.stream()
+                    .filter(c -> (c.getFirstName() != null && c.getFirstName().toLowerCase().contains(term)) ||
+                            (c.getLastName() != null && c.getLastName().toLowerCase().contains(term)) ||
+                            (c.getEmail() != null && c.getEmail().toLowerCase().contains(term)) ||
+                            (c.getPhone() != null && c.getPhone().toLowerCase().contains(term)))
+                    .toList();
+        }
+        grid.setItems(allCustomers);
     }
 
     // Inner Form Class

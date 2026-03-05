@@ -147,6 +147,8 @@ public class MainLayout extends AppLayout {
             if (isAdmin || accessibleViews.contains("Reports")) {
                 nav.addItem(new SideNavItem("Reports", com.aynlabs.lumoBills.ui.views.reports.ReportsView.class,
                         VaadinIcon.CHART_3D.create()));
+                nav.addItem(new SideNavItem("Ledger", com.aynlabs.lumoBills.ui.views.reports.LedgerView.class,
+                        VaadinIcon.BOOK.create()));
             }
 
             if (isAdmin) {

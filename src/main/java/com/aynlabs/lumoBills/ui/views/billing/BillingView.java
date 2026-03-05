@@ -68,6 +68,8 @@ public class BillingView extends VerticalLayout {
     private Button saveDraftButton = new Button("Save as Draft");
     private Button clearButton = new Button("Clear Form");
     private ComboBox<Invoice.PaymentMode> paymentModeSelect = new ComboBox<>("Payment Mode");
+    private com.vaadin.flow.component.textfield.BigDecimalField amountReceivedField = new com.vaadin.flow.component.textfield.BigDecimalField(
+            "Amount Received");
     private TextArea notesField = new TextArea("Notes");
     private Anchor downloadLink = new Anchor();
 
@@ -167,7 +169,9 @@ public class BillingView extends VerticalLayout {
         paymentModeSelect.setItems(Invoice.PaymentMode.values());
         paymentModeSelect.setValue(Invoice.PaymentMode.CASH);
 
-        HorizontalLayout extraOptions = new HorizontalLayout(paymentModeSelect, notesField);
+        amountReceivedField.setValue(BigDecimal.ZERO);
+
+        HorizontalLayout extraOptions = new HorizontalLayout(paymentModeSelect, amountReceivedField, notesField);
         extraOptions.setWidthFull();
 
         downloadLink.getElement().setAttribute("download", true);
@@ -406,6 +410,8 @@ public class BillingView extends VerticalLayout {
         discountSpan.setText("Discount: -" + this.currencySymbol + String.format("%.2f", currentDiscount));
         taxSpan.setText("Tax: +" + this.currencySymbol + String.format("%.2f", currentTax));
         totalAmount.setText("Total: " + this.currencySymbol + String.format("%.2f", currentTotal));
+
+        amountReceivedField.setValue(currentTotal);
     }
 
     private void updateSaveButtonState() {
@@ -421,7 +427,18 @@ public class BillingView extends VerticalLayout {
             Invoice invoice = new Invoice();
             invoice.setCustomer(selectedCustomer);
             invoice.setDate(LocalDateTime.now());
-            invoice.setItems(new ArrayList<>(currentItems)); // Copy list
+
+            // Deep copy items to prevent JPA detached entity exceptions on sequential saves
+            List<InvoiceItem> copiedItems = new ArrayList<>();
+            for (InvoiceItem item : currentItems) {
+                InvoiceItem copy = new InvoiceItem();
+                copy.setProduct(item.getProduct());
+                copy.setQuantity(item.getQuantity());
+                copy.setUnitPrice(item.getUnitPrice());
+                copiedItems.add(copy);
+            }
+            invoice.setItems(copiedItems);
+
             invoice.setNotes(notesField.getValue());
             invoice.setPaymentMode(paymentModeSelect.getValue());
 
@@ -431,7 +448,21 @@ public class BillingView extends VerticalLayout {
             invoice.setTaxAmount(currentTax);
             invoice.setTotalAmount(currentTotal);
 
-            invoice.setStatus(targetStatus);
+            Invoice.InvoiceStatus actualStatus = targetStatus;
+            java.math.BigDecimal amountReceived = amountReceivedField.getValue() != null
+                    ? amountReceivedField.getValue()
+                    : BigDecimal.ZERO;
+
+            if (targetStatus == Invoice.InvoiceStatus.PAID) {
+                if (amountReceived.compareTo(currentTotal) < 0) {
+                    actualStatus = Invoice.InvoiceStatus.PARTIAL;
+                }
+            }
+
+            invoice.setStatus(actualStatus);
+            if (actualStatus == Invoice.InvoiceStatus.PARTIAL) {
+                invoice.setAmountPaid(amountReceived);
+            }
 
             invoiceService.createInvoice(invoice, currentUser);
 
@@ -488,6 +519,7 @@ public class BillingView extends VerticalLayout {
         productSelect.clear();
         notesField.clear();
         paymentModeSelect.setValue(Invoice.PaymentMode.CASH);
+        amountReceivedField.setValue(BigDecimal.ZERO);
         selectedCustomer = null;
     }
 }

@@ -204,6 +204,11 @@ public class DashboardView extends VerticalLayout {
                 statsLayout.add(createCard("Net Profit/Loss", currencySymbol + " " + profit, "stats-card", profitColor,
                                 profitEnd));
 
+                BigDecimal pendingAmount = invoiceService.getPendingSalesAmount();
+                statsLayout.add(createCard("Total Pending Amount", currencySymbol + " " + pendingAmount, "stats-card",
+                                "#D97706",
+                                "#FBBF24"));
+
                 long lowStockCount = productService.findAll().stream().filter(Product::isLowStock).count();
                 statsLayout.add(createCard("Low Stock Alerts", String.valueOf(lowStockCount), "error-card"));
 

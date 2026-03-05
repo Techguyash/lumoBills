@@ -20,11 +20,13 @@ public class Customer extends AbstractEntity {
     private String email;
 
     private String phone;
-    
+
     private String address;
-    
+
+    private java.math.BigDecimal outstandingBalance = java.math.BigDecimal.ZERO;
+
     private String city;
-    
+
     public String getFullName() {
         return firstName + (lastName != null ? " " + lastName : "");
     }
