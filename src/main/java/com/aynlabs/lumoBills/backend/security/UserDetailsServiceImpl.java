@@ -25,6 +25,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException("No user present with username: " + username);
         } else {
             return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getHashedPassword(),
+                    user.isActive(), true, true, true,
                     user.getRoles().stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
                             .collect(Collectors.toList()));
         }
