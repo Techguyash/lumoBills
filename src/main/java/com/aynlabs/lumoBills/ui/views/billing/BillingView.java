@@ -57,6 +57,8 @@ public class BillingView extends VerticalLayout {
     private Button addButton = new Button("Add Item");
 
     private Grid<InvoiceItem> itemGrid = new Grid<>(InvoiceItem.class);
+    private VerticalLayout recentBillsSidebar;
+    private SplitLayout mainSplitLayout;
 
     // Summary Fields
     private Span subTotalSpan = new Span("Subtotal: $0.00");
@@ -113,13 +115,46 @@ public class BillingView extends VerticalLayout {
         taxSpan.setText("Tax: +" + this.currencySymbol + "0.00");
         totalAmount.setText("Total: " + this.currencySymbol + "0.00");
 
-        SplitLayout splitLayout = new SplitLayout();
-        splitLayout.setSizeFull();
-        splitLayout.addToPrimary(createInvoiceForm());
-        splitLayout.addToSecondary(createInvoiceHistory());
-        splitLayout.setSplitterPosition(70);
+        recentBillsSidebar = createInvoiceHistory();
+        recentBillsSidebar.setWidthFull();
 
-        add(splitLayout);
+        VerticalLayout billingFormContainer = createInvoiceForm();
+        billingFormContainer.setSizeFull();
+
+        mainSplitLayout = new SplitLayout();
+        mainSplitLayout.setSizeFull();
+        mainSplitLayout.addToPrimary(billingFormContainer);
+        mainSplitLayout.addToSecondary(recentBillsSidebar);
+        mainSplitLayout.setSplitterPosition(100);
+
+        Button toggleRecentBillsBtn = new Button("Recent Invoices",
+                new com.vaadin.flow.component.icon.Icon(com.vaadin.flow.component.icon.VaadinIcon.LIST));
+        toggleRecentBillsBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        toggleRecentBillsBtn.addClickListener(e -> {
+            boolean hidden = !mainSplitLayout.getSecondaryComponent().isVisible();
+            if (hidden) {
+                mainSplitLayout.getSecondaryComponent().setVisible(true);
+                mainSplitLayout.setSplitterPosition(70);
+                toggleRecentBillsBtn.setText("Hide Recent");
+            } else {
+                mainSplitLayout.getSecondaryComponent().setVisible(false);
+                mainSplitLayout.setSplitterPosition(100);
+                toggleRecentBillsBtn.setText("Show Recent");
+            }
+        });
+
+        HorizontalLayout topToolbar = new HorizontalLayout(new com.vaadin.flow.component.html.H2("New Billing"),
+                toggleRecentBillsBtn);
+        topToolbar.setWidthFull();
+        topToolbar.setAlignItems(Alignment.CENTER);
+        topToolbar.setJustifyContentMode(JustifyContentMode.BETWEEN);
+
+        add(topToolbar, mainSplitLayout);
+
+        // Initial state: hidden
+        mainSplitLayout.getSecondaryComponent().setVisible(false);
+        mainSplitLayout.setSplitterPosition(100);
+
         updateRecentInvoices();
     }
 
@@ -232,29 +267,13 @@ public class BillingView extends VerticalLayout {
 
     private VerticalLayout createInvoiceHistory() {
         VerticalLayout layout = new VerticalLayout();
-        layout.setSizeFull();
+        layout.setHeightFull();
         layout.setPadding(true);
         layout.setSpacing(true);
+        layout.getStyle().set("border-left", "1px solid var(--lumo-contrast-10pct)");
 
-        H3 title = new H3("Recent Invoices");
-        Button toggleBtn = new Button(
-                new com.vaadin.flow.component.icon.Icon(com.vaadin.flow.component.icon.VaadinIcon.CHEVRON_UP));
-        toggleBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-
-        toggleBtn.addClickListener(e -> {
-            boolean isVisible = recentGrid.isVisible();
-            recentGrid.setVisible(!isVisible);
-            toggleBtn.setIcon(new com.vaadin.flow.component.icon.Icon(
-                    isVisible ? com.vaadin.flow.component.icon.VaadinIcon.CHEVRON_DOWN
-                            : com.vaadin.flow.component.icon.VaadinIcon.CHEVRON_UP));
-        });
-
-        HorizontalLayout header = new HorizontalLayout(title, toggleBtn);
-        header.setWidthFull();
-        header.setAlignItems(Alignment.CENTER);
-        header.setJustifyContentMode(JustifyContentMode.BETWEEN);
-
-        layout.add(header, recentGrid);
+        com.vaadin.flow.component.html.H3 title = new com.vaadin.flow.component.html.H3("Recent Invoices");
+        layout.add(title, recentGrid);
         layout.setFlexGrow(1, recentGrid);
         return layout;
     }
