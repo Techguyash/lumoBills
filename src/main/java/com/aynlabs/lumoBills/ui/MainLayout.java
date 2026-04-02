@@ -85,13 +85,15 @@ public class MainLayout extends AppLayout {
 
             Button themeToggle = new Button(VaadinIcon.ADJUST.create(), click -> {
                 com.vaadin.flow.component.UI.getCurrent().getElement().executeJs(
-                        "const isDark = document.documentElement.hasAttribute('theme');" +
-                                "if (isDark) { " +
-                                "document.documentElement.removeAttribute('theme'); " +
-                                "document.body.removeAttribute('theme'); " +
-                                "} else { " +
-                                "document.documentElement.setAttribute('theme', 'dark'); " +
-                                "document.body.setAttribute('theme', 'dark'); " +
+                        "const html = document.documentElement;" +
+                                "const isDark = html.getAttribute('theme') && html.getAttribute('theme').includes('dark');"
+                                +
+                                "if (isDark) {" +
+                                "  html.setAttribute('theme', 'lumoBills light');" +
+                                "  document.body.setAttribute('theme', 'lumoBills light');" +
+                                "} else {" +
+                                "  html.setAttribute('theme', 'lumoBills dark');" +
+                                "  document.body.setAttribute('theme', 'lumoBills dark');" +
                                 "}");
             });
             themeToggle.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);

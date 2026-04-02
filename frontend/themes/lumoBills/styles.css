@@ -1,24 +1,118 @@
-/* Global */
-body {
-    font-family: 'Inter', sans-serif;
+/* LIGHT MODE (Verizon Red & White) */
+:root,
+html,
+html[theme]:not([theme~="dark"]),
+html:not([theme~="dark"]) {
+    --lumo-tint: #ffffff;
+    --lumo-shade: #000000;
+
+    --lumo-contrast-5pct: rgba(0, 0, 0, 0.05);
+    --lumo-contrast-10pct: rgba(0, 0, 0, 0.1);
+    --lumo-contrast-20pct: rgba(0, 0, 0, 0.2);
+    --lumo-contrast-30pct: rgba(0, 0, 0, 0.3);
+    --lumo-contrast-40pct: rgba(0, 0, 0, 0.4);
+    --lumo-contrast-50pct: rgba(0, 0, 0, 0.5);
+    --lumo-contrast-60pct: rgba(0, 0, 0, 0.6);
+    --lumo-contrast-70pct: rgba(0, 0, 0, 0.7);
+    --lumo-contrast-80pct: rgba(0, 0, 0, 0.8);
+    --lumo-contrast-90pct: rgba(0, 0, 0, 0.9);
+    --lumo-contrast: #000000;
+
+    --lumo-base-color: #ffffff;
+    --lumo-body-text-color: #000000;
+    --lumo-header-text-color: #000000;
+    --lumo-secondary-text-color: rgba(0, 0, 0, 0.8);
+    --lumo-tertiary-text-color: rgba(0, 0, 0, 0.6);
+
+    --lumo-primary-color: #d52b1e !important;
+    --lumo-primary-color-50pct: rgba(213, 43, 30, 0.5) !important;
+    --lumo-primary-color-10pct: rgba(213, 43, 30, 0.1) !important;
+    --lumo-primary-text-color: #d52b1e !important;
 }
 
-/* Header */
-.header-layout {
-    background: var(--lumo-base-color);
+/* DARK MODE (Verizon Red & True Black) */
+html[theme~="dark"],
+html[theme~="lumoBills"][theme~="dark"],
+[data-theme~="dark"] {
+    --lumo-tint: #ffffff !important;
+    --lumo-shade: #000000 !important;
+
+    --lumo-contrast-5pct: rgba(255, 255, 255, 0.05) !important;
+    --lumo-contrast-10pct: rgba(255, 255, 255, 0.1) !important;
+    --lumo-contrast-20pct: rgba(255, 255, 255, 0.2) !important;
+    --lumo-contrast-30pct: rgba(255, 255, 255, 0.3) !important;
+    --lumo-contrast-40pct: rgba(255, 255, 255, 0.4) !important;
+    --lumo-contrast-50pct: rgba(255, 255, 255, 0.5) !important;
+    --lumo-contrast-60pct: rgba(255, 255, 255, 0.6) !important;
+    --lumo-contrast-70pct: rgba(255, 255, 255, 0.7) !important;
+    --lumo-contrast-80pct: rgba(255, 255, 255, 0.8) !important;
+    --lumo-contrast-90pct: rgba(255, 255, 255, 0.9) !important;
+    --lumo-contrast: #ffffff !important;
+
+    --lumo-base-color: #000000 !important;
+    --lumo-body-text-color: #ffffff !important;
+    --lumo-header-text-color: #ffffff !important;
+    --lumo-secondary-text-color: rgba(255, 255, 255, 0.8) !important;
+    --lumo-tertiary-text-color: rgba(255, 255, 255, 0.6) !important;
+
+    --lumo-primary-color: #d52b1e !important;
+    --lumo-primary-color-50pct: rgba(213, 43, 30, 0.5) !important;
+    --lumo-primary-color-10pct: rgba(213, 43, 30, 0.1) !important;
+    --lumo-primary-text-color: #ff4d40 !important;
+}
+
+/* FORCE LIGHT MODE DEFAULT ON DARK OS - Prevent Vaadin from auto-switching with OS */
+@media (prefers-color-scheme: dark) {
+    html:not([theme~="dark"]) {
+        --lumo-tint: #ffffff !important;
+        --lumo-shade: #000000 !important;
+
+        --lumo-contrast-5pct: rgba(0, 0, 0, 0.05) !important;
+        --lumo-contrast-10pct: rgba(0, 0, 0, 0.1) !important;
+        --lumo-contrast-20pct: rgba(0, 0, 0, 0.2) !important;
+        --lumo-contrast-30pct: rgba(0, 0, 0, 0.3) !important;
+        --lumo-contrast-40pct: rgba(0, 0, 0, 0.4) !important;
+        --lumo-contrast-50pct: rgba(0, 0, 0, 0.5) !important;
+        --lumo-contrast-60pct: rgba(0, 0, 0, 0.6) !important;
+        --lumo-contrast-70pct: rgba(0, 0, 0, 0.7) !important;
+        --lumo-contrast-80pct: rgba(0, 0, 0, 0.8) !important;
+        --lumo-contrast-90pct: rgba(0, 0, 0, 0.9) !important;
+        --lumo-contrast: #000000 !important;
+
+        --lumo-base-color: #ffffff !important;
+        --lumo-body-text-color: #000000 !important;
+        --lumo-header-text-color: #000000 !important;
+        --lumo-secondary-text-color: rgba(0, 0, 0, 0.8) !important;
+        --lumo-tertiary-text-color: rgba(0, 0, 0, 0.6) !important;
+
+        --lumo-primary-color: #d52b1e !important;
+        --lumo-primary-color-50pct: rgba(213, 43, 30, 0.5) !important;
+        --lumo-primary-color-10pct: rgba(213, 43, 30, 0.1) !important;
+        --lumo-primary-text-color: #d52b1e !important;
+    }
+}
+
+body {
+    font-family: 'Neue Haas Grotesk', 'Helvetica Neue', 'Inter', sans-serif;
+    margin: 0;
+    background-color: var(--lumo-base-color);
     color: var(--lumo-body-text-color);
-    border-bottom: 1px solid var(--lumo-contrast-10pct);
+}
+
+/* Header Navbar Base */
+.header-layout {
+    background: var(--lumo-base-color) !important;
+    color: var(--lumo-body-text-color) !important;
     height: 64px;
     align-items: center;
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
 }
 
 .header-logo {
     font-weight: 800;
     letter-spacing: -0.5px;
-    background: linear-gradient(to right, var(--lumo-primary-color), #3b82f6);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--lumo-primary-color) !important;
+    background: none;
     font-size: 1.5rem !important;
 }
 
@@ -26,13 +120,12 @@ body {
     cursor: pointer;
 }
 
-/* User Menu */
-/* Removed overriding menu text colors so they respect the theme defaults */
-
-/* Drawer */
 vaadin-app-layout::part(drawer) {
     background-color: var(--lumo-base-color);
     border-right: 1px solid var(--lumo-contrast-10pct);
 }
 
-/* Dashboard Cards - Styles are set via inline styles in DashboardView.java */
+.login-view,
+vaadin-app-layout {
+    background: transparent;
+}
