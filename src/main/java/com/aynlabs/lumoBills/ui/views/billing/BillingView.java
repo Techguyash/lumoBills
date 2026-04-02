@@ -65,7 +65,6 @@ public class BillingView extends VerticalLayout {
     private Span totalAmount = new Span("Total: $0.00");
 
     private Button saveInvoiceButton = new Button("Save Invoice");
-    private Button saveDraftButton = new Button("Save as Draft");
     private Button clearButton = new Button("Clear Form");
     private ComboBox<Invoice.PaymentMode> paymentModeSelect = new ComboBox<>("Payment Mode");
     private com.vaadin.flow.component.textfield.BigDecimalField amountReceivedField = new com.vaadin.flow.component.textfield.BigDecimalField(
@@ -160,10 +159,6 @@ public class BillingView extends VerticalLayout {
         saveInvoiceButton.addClickListener(e -> saveInvoice(Invoice.InvoiceStatus.PAID));
         saveInvoiceButton.setEnabled(false);
 
-        saveDraftButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        saveDraftButton.addClickListener(e -> saveInvoice(Invoice.InvoiceStatus.PENDING));
-        saveDraftButton.setEnabled(false);
-
         clearButton.addClickListener(e -> resetInvoice());
 
         paymentModeSelect.setItems(Invoice.PaymentMode.values());
@@ -189,7 +184,7 @@ public class BillingView extends VerticalLayout {
         summaryLayout.setPadding(false);
         summaryLayout.setAlignItems(Alignment.END);
 
-        HorizontalLayout actionButtons = new HorizontalLayout(clearButton, saveDraftButton, saveInvoiceButton);
+        HorizontalLayout actionButtons = new HorizontalLayout(clearButton, saveInvoiceButton);
 
         HorizontalLayout footer = new HorizontalLayout(summaryLayout, actionButtons);
         footer.setDefaultVerticalComponentAlignment(Alignment.CENTER);
@@ -238,13 +233,37 @@ public class BillingView extends VerticalLayout {
     private VerticalLayout createInvoiceHistory() {
         VerticalLayout layout = new VerticalLayout();
         layout.setSizeFull();
-        layout.add(new H3("Recent Invoices"), recentGrid);
+        layout.setPadding(true);
+        layout.setSpacing(true);
+
+        H3 title = new H3("Recent Invoices");
+        Button toggleBtn = new Button(
+                new com.vaadin.flow.component.icon.Icon(com.vaadin.flow.component.icon.VaadinIcon.CHEVRON_UP));
+        toggleBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+
+        toggleBtn.addClickListener(e -> {
+            boolean isVisible = recentGrid.isVisible();
+            recentGrid.setVisible(!isVisible);
+            toggleBtn.setIcon(new com.vaadin.flow.component.icon.Icon(
+                    isVisible ? com.vaadin.flow.component.icon.VaadinIcon.CHEVRON_DOWN
+                            : com.vaadin.flow.component.icon.VaadinIcon.CHEVRON_UP));
+        });
+
+        HorizontalLayout header = new HorizontalLayout(title, toggleBtn);
+        header.setWidthFull();
+        header.setAlignItems(Alignment.CENTER);
+        header.setJustifyContentMode(JustifyContentMode.BETWEEN);
+
+        layout.add(header, recentGrid);
+        layout.setFlexGrow(1, recentGrid);
         return layout;
     }
 
     private void configureRecentGrid() {
         recentGrid.setSizeFull();
-        recentGrid.setColumns("date");
+        recentGrid.setHeight("400px");
+        recentGrid.removeAllColumns();
+        com.aynlabs.lumoBills.ui.util.GridHelper.addDateTimeColumn(recentGrid, Invoice::getDate, "Date");
         recentGrid
                 .addColumn(invoice -> invoice.getInvoiceNumber() != null ? invoice.getInvoiceNumber() : invoice.getId())
                 .setHeader("Invoice #").setSortable(true);
@@ -417,7 +436,6 @@ public class BillingView extends VerticalLayout {
     private void updateSaveButtonState() {
         boolean valid = selectedCustomer != null && !currentItems.isEmpty();
         saveInvoiceButton.setEnabled(valid);
-        saveDraftButton.setEnabled(valid);
     }
 
     private void saveInvoice(Invoice.InvoiceStatus targetStatus) {

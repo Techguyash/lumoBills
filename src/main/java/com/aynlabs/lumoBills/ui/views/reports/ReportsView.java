@@ -88,6 +88,14 @@ public class ReportsView extends VerticalLayout {
             Grid<SalesReportDTO> grid = new Grid<>(SalesReportDTO.class);
             List<SalesReportDTO> data = reportService.getSalesData(start, end);
             grid.setItems(data);
+            grid.removeAllColumns();
+            GridHelper.addDateTimeColumn(grid, SalesReportDTO::getDate, "Date");
+            grid.addColumn(SalesReportDTO::getInvoiceId).setHeader("Invoice ID");
+            grid.addColumn(SalesReportDTO::getCustomerName).setHeader("Customer");
+            grid.addColumn(SalesReportDTO::getSubTotal).setHeader("Subtotal");
+            grid.addColumn(SalesReportDTO::getTaxAmount).setHeader("Tax");
+            grid.addColumn(SalesReportDTO::getDiscountAmount).setHeader("Discount");
+            grid.addColumn(SalesReportDTO::getTotalAmount).setHeader("Total");
             GridHelper.setBasicProperties(grid);
             gridContainer.add(grid);
             currentGrid = grid;
@@ -96,10 +104,15 @@ public class ReportsView extends VerticalLayout {
             Grid<StockReportDTO> grid = new Grid<>(StockReportDTO.class);
             List<StockReportDTO> data = reportService.getStockHistoryData(start, end, null);
             grid.setItems(data);
-            grid.setColumns("date", "productName", "type", "changeAmount", "purchasePrice", "totalAmount",
-                    "conductedBy", "notes");
-            grid.getColumnByKey("purchasePrice").setHeader("Price Rate");
-            grid.getColumnByKey("totalAmount").setHeader("Total Financial");
+            grid.removeAllColumns();
+            GridHelper.addDateTimeColumn(grid, StockReportDTO::getDate, "Date");
+            grid.addColumn("productName").setHeader("Product");
+            grid.addColumn("type").setHeader("Type");
+            grid.addColumn("changeAmount").setHeader("Change");
+            grid.addColumn("purchasePrice").setHeader("Price Rate");
+            grid.addColumn("totalAmount").setHeader("Total Financial");
+            grid.addColumn("conductedBy").setHeader("User");
+            grid.addColumn("notes").setHeader("Notes");
             GridHelper.setBasicProperties(grid);
             gridContainer.add(grid);
             currentGrid = grid;
@@ -108,10 +121,14 @@ public class ReportsView extends VerticalLayout {
             Grid<StockReportDTO> grid = new Grid<>(StockReportDTO.class);
             List<StockReportDTO> data = reportService.getStockHistoryData(start, end, TransactionType.PURCHASE);
             grid.setItems(data);
-            grid.setColumns("date", "productName", "changeAmount", "purchasePrice", "totalAmount", "conductedBy",
-                    "notes");
-            grid.getColumnByKey("purchasePrice").setHeader("Buying Price");
-            grid.getColumnByKey("totalAmount").setHeader("Total Cost");
+            grid.removeAllColumns();
+            GridHelper.addDateTimeColumn(grid, StockReportDTO::getDate, "Date");
+            grid.addColumn("productName").setHeader("Product");
+            grid.addColumn("changeAmount").setHeader("Qty");
+            grid.addColumn("purchasePrice").setHeader("Buying Price");
+            grid.addColumn("totalAmount").setHeader("Total Cost");
+            grid.addColumn("conductedBy").setHeader("User");
+            grid.addColumn("notes").setHeader("Notes");
             GridHelper.setBasicProperties(grid);
             gridContainer.add(grid);
             currentGrid = grid;
@@ -149,7 +166,14 @@ public class ReportsView extends VerticalLayout {
             Grid<Purchase> grid = new Grid<>(Purchase.class);
             List<Purchase> data = purchaseService.findByDateBetween(start, end);
             grid.setItems(data);
-            grid.setColumns("purchaseDate", "productName", "sellerName", "quantity", "price", "total");
+            grid.removeAllColumns();
+            GridHelper.addDateTimeColumn(grid, Purchase::getPurchaseDate, "Date");
+            grid.addColumn(purchase -> purchase.getProduct() != null ? purchase.getProduct().getName() : "")
+                    .setHeader("Product");
+            grid.addColumn("sellerName").setHeader("Seller");
+            grid.addColumn("quantity").setHeader("Qty");
+            grid.addColumn("price").setHeader("Price");
+            grid.addColumn("total").setHeader("Total");
             GridHelper.setBasicProperties(grid);
             gridContainer.add(grid);
             currentGrid = grid;

@@ -165,7 +165,8 @@ public class DashboardView extends VerticalLayout {
                                 .findRecentActivity(8);
                 for (com.aynlabs.lumoBills.backend.entity.StockHistory activity : recentActivity) {
                         String text = String.format("%s: %s %d for %s",
-                                        activity.getTimestamp().toLocalTime().toString(),
+                                        activity.getTimestamp().format(
+                                                        com.aynlabs.lumoBills.ui.util.GridHelper.DATE_TIME_FORMATTER),
                                         activity.getType(),
                                         activity.getChangeAmount(),
                                         activity.getProduct().getName());

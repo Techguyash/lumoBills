@@ -89,10 +89,16 @@ public class PurchaseView extends VerticalLayout {
     }
 
     private VerticalLayout createPurchaseList() {
-        grid.setColumns("purchaseDate", "sellerName", "quantity", "price", "total");
+        grid.removeAllColumns();
+        com.aynlabs.lumoBills.ui.util.GridHelper.addDateTimeColumn(grid, Purchase::getPurchaseDate, "Date");
         grid.addColumn(purchase -> purchase.getProduct() != null ? purchase.getProduct().getName() : "")
                 .setHeader("Product");
+        grid.addColumn("sellerName").setHeader("Seller");
+        grid.addColumn("quantity").setHeader("Qty");
+        grid.addColumn("price").setHeader("Price");
+        grid.addColumn("total").setHeader("Total");
         grid.setSizeFull();
+        com.aynlabs.lumoBills.ui.util.GridHelper.setBasicProperties(grid);
 
         grid.asSingleSelect().addValueChangeListener(e -> {
             if (e.getValue() != null) {

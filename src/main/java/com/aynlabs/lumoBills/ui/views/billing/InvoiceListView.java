@@ -69,7 +69,8 @@ public class InvoiceListView extends VerticalLayout {
     private void configureGrid() {
         grid.addClassName("invoice-grid");
         grid.setSizeFull();
-        grid.setColumns("date");
+        grid.removeAllColumns();
+        com.aynlabs.lumoBills.ui.util.GridHelper.addDateTimeColumn(grid, Invoice::getDate, "Date");
         grid.addColumn(invoice -> invoice.getInvoiceNumber() != null ? invoice.getInvoiceNumber() : invoice.getId())
                 .setHeader("Invoice #").setSortable(true);
         grid.addColumn(invoice -> invoice.getCustomer() != null ? invoice.getCustomer().getFullName() : "N/A")
@@ -121,7 +122,8 @@ public class InvoiceListView extends VerticalLayout {
 
         layout.add(new com.vaadin.flow.component.html.Span(
                 "Customer: " + (invoice.getCustomer() != null ? invoice.getCustomer().getFullName() : "N/A")));
-        layout.add(new com.vaadin.flow.component.html.Span("Date: " + invoice.getDate().toString()));
+        layout.add(new com.vaadin.flow.component.html.Span(
+                "Date: " + invoice.getDate().format(com.aynlabs.lumoBills.ui.util.GridHelper.DATE_TIME_FORMATTER)));
         layout.add(
                 new com.vaadin.flow.component.html.Span("Total Amount: " + currencySymbol + invoice.getTotalAmount()));
         layout.add(new com.vaadin.flow.component.html.Span("Amount Paid: " + currencySymbol + invoice.getAmountPaid()));

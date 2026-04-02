@@ -105,7 +105,14 @@ public class LedgerView extends VerticalLayout {
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.setColumns("transactionDate", "category", "description", "referenceId", "paymentMode");
+        grid.removeAllColumns();
+        Grid.Column<LedgerEntry> dateCol = GridHelper.addDateTimeColumn(grid, LedgerEntry::getTransactionDate, "Date");
+        dateCol.setKey("transactionDate");
+
+        Grid.Column<LedgerEntry> catCol = grid.addColumn("category").setHeader("Category");
+        Grid.Column<LedgerEntry> descCol = grid.addColumn("description").setHeader("Description");
+        Grid.Column<LedgerEntry> refCol = grid.addColumn("referenceId").setHeader("Ref #");
+        Grid.Column<LedgerEntry> modeCol = grid.addColumn("paymentMode").setHeader("Mode");
 
         Grid.Column<LedgerEntry> typeCol = grid.addComponentColumn(entry -> {
             Span badge = new Span(entry.getType().name());
@@ -121,16 +128,14 @@ public class LedgerView extends VerticalLayout {
         Grid.Column<LedgerEntry> amountCol = grid.addColumn(entry -> currencySymbol + entry.getAmount())
                 .setHeader("Amount");
 
-        grid.getColumnByKey("transactionDate").setAutoWidth(true).setFlexGrow(0);
-
         grid.setColumnOrder(
-                grid.getColumnByKey("transactionDate"),
-                grid.getColumnByKey("category"),
+                dateCol,
+                catCol,
                 amountCol,
                 typeCol,
-                grid.getColumnByKey("description"),
-                grid.getColumnByKey("referenceId"),
-                grid.getColumnByKey("paymentMode"));
+                descCol,
+                refCol,
+                modeCol);
 
         GridHelper.setBasicProperties(grid);
     }
