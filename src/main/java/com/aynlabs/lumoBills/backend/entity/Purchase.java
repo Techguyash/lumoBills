@@ -14,8 +14,7 @@ import lombok.Setter;
 public class Purchase extends AbstractEntity {
 
     @jakarta.persistence.ManyToOne
-    @jakarta.persistence.JoinColumn(name = "product_id")
-    @NotNull
+    @jakarta.persistence.JoinColumn(name = "product_id", nullable = true)
     private Product product;
 
     private String sellerName;

@@ -107,7 +107,7 @@ public class LedgerView extends VerticalLayout {
         grid.setSizeFull();
         grid.setColumns("transactionDate", "category", "description", "referenceId", "paymentMode");
 
-        grid.addComponentColumn(entry -> {
+        Grid.Column<LedgerEntry> typeCol = grid.addComponentColumn(entry -> {
             Span badge = new Span(entry.getType().name());
             badge.getElement().getThemeList().add("badge");
             if (entry.getType() == LedgerEntry.EntryType.INCOME) {
@@ -118,7 +118,19 @@ public class LedgerView extends VerticalLayout {
             return badge;
         }).setHeader("Type").setSortable(true);
 
-        grid.addColumn(entry -> currencySymbol + entry.getAmount()).setHeader("Amount");
+        Grid.Column<LedgerEntry> amountCol = grid.addColumn(entry -> currencySymbol + entry.getAmount())
+                .setHeader("Amount");
+
+        grid.getColumnByKey("transactionDate").setAutoWidth(true).setFlexGrow(0);
+
+        grid.setColumnOrder(
+                grid.getColumnByKey("transactionDate"),
+                grid.getColumnByKey("category"),
+                amountCol,
+                typeCol,
+                grid.getColumnByKey("description"),
+                grid.getColumnByKey("referenceId"),
+                grid.getColumnByKey("paymentMode"));
 
         GridHelper.setBasicProperties(grid);
     }

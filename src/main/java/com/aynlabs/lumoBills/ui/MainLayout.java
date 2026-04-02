@@ -34,6 +34,7 @@ import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 
 @Component
 @Scope("prototype")
@@ -41,20 +42,20 @@ public class MainLayout extends AppLayout {
 
     private final SecurityService securityService;
 
-    public MainLayout(SecurityService securityService) {
+    public MainLayout(SecurityService securityService, @Value("${app.name:LumoBills}") String appName) {
         this.securityService = securityService;
 
         setPrimarySection(Section.NAVBAR);
         addDrawerContent();
-        addHeaderContent();
+        addHeaderContent(appName);
     }
 
-    private void addHeaderContent() {
+    private void addHeaderContent(String appName) {
         DrawerToggle toggle = new DrawerToggle();
         toggle.getElement().setAttribute("aria-label", "Menu toggle");
 
         // Logo / App Name in Header
-        H1 logo = new H1("LumoBills");
+        H1 logo = new H1(appName);
         logo.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE, "header-logo");
 
         HorizontalLayout leftSide = new HorizontalLayout(toggle, logo);

@@ -122,11 +122,7 @@ public class PurchaseView extends VerticalLayout {
     }
 
     private void clearForm() {
-        product.clear();
-        sellerName.clear();
-        quantity.clear();
-        price.clear();
-        total.clear();
+        binder.readBean(null);
     }
 
     private void updateList() {
